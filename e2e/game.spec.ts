@@ -158,17 +158,17 @@ test.describe('Spielfeld', () => {
     expect(await stored(page, 'skip.e4')).toBe('true');
   });
 
-  test('Lektion 15: Sieg mit dem Zusatz zur Einführung und „Zur Levelwahl“', async ({ page }) => {
+  test('Lektion 15: Sieg mit dem Zusatz zur Einführung und „Zu den Lektionen“', async ({ page }) => {
     await openGame(page, { hash: '#lektion-15', store: upTo(15) });
     const l = lesson(15);
     await playLurd(page, l.sol);
     await expect(sign(page)).toHaveText(
       `Geschafft! ${l.moves} Züge, kürzer geht es nicht. Damit ist die Einführung geschafft.`,
     );
-    const next = spiel(page).getByRole('link', { name: 'Zur Levelwahl' });
+    const next = spiel(page).getByRole('link', { name: 'Zu den Lektionen' });
     await expect(next).toHaveAttribute('href', '#level');
     await next.click();
-    await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Lektion wählen' })).toBeVisible();
     await expect(page.locator('body')).not.toHaveClass(/\bplaying\b/);
   });
 
@@ -417,16 +417,16 @@ test.describe('Menü', () => {
       'Tipp',
       'Lösung zeigen',
       'Lektion überspringen',
-      'Level wählen',
+      'Lektion wählen',
       'Einstellungen',
       'Startbildschirm',
     ]);
     await expect(d.getByRole('link')).toHaveCount(3);
-    await expect(d.getByRole('link', { name: 'Level wählen' })).toHaveAttribute('href', '#level');
+    await expect(d.getByRole('link', { name: 'Lektion wählen' })).toHaveAttribute('href', '#level');
     await expect(d.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute('href', '#einstellungen');
     await expect(d.getByRole('link', { name: 'Startbildschirm' })).toHaveAttribute('href', '#start');
     await expect(d.locator('p.note')).toHaveText(
-      'Überspringen und „Lösung zeigen“ machen die nächste Lektion frei. Zurückkommen geht jederzeit über „Level wählen“.',
+      'Überspringen und „Lösung zeigen“ machen die nächste Lektion frei. Zurückkommen geht jederzeit über „Lektion wählen“.',
     );
     await expect(d.getByRole('button', { name: 'Weiterspielen' })).toHaveClass(/\bprimary\b/);
     await page.keyboard.press('Escape');
@@ -472,7 +472,7 @@ test.describe('Menü', () => {
     await expect(dialog(page)).toBeVisible();
   });
 
-  test('ein Bildschirmwechsel schließt das Menü; „Level wählen“ führt zur Levelwahl', async ({ page }) => {
+  test('ein Bildschirmwechsel schließt das Menü; „Lektion wählen“ führt zur Levelwahl', async ({ page }) => {
     await openGame(page, { hash: '#lektion-1' });
     await page.keyboard.press('m');
     await expect(dialog(page)).toBeVisible();
@@ -481,7 +481,7 @@ test.describe('Menü', () => {
     await expect(dialog(page)).toBeHidden();
     await page.evaluate(() => (location.hash = '#lektion-1'));
     await page.keyboard.press('m');
-    await dialog(page).getByRole('link', { name: 'Level wählen' }).click();
+    await dialog(page).getByRole('link', { name: 'Lektion wählen' }).click();
     await expect(page).toHaveURL(/#level$/);
     await expect(dialog(page)).toBeHidden();
   });
@@ -622,7 +622,7 @@ test.describe('Lektion überspringen', () => {
 });
 
 test.describe('nachgeladen und Wake Lock', () => {
-  test('ohne den nachgeladenen Teil geht das Menü trotzdem: Lösung zeigen und Level wählen', async ({ page }) => {
+  test('ohne den nachgeladenen Teil geht das Menü trotzdem: Lösung zeigen und Lektion wählen', async ({ page }) => {
     await page.route(/\/ks-menu\.[^/]*\.js$/, (route) => route.abort());
     await openGame(page, { hash: '#lektion-2', store: { 'skip.e1': true } });
     await page.keyboard.press('m');
@@ -634,9 +634,9 @@ test.describe('nachgeladen und Wake Lock', () => {
     await expect(sign(page)).toHaveText(SIGN.showing);
     await page.keyboard.press('Escape');
     await expect(d).toBeVisible();
-    await d.getByRole('link', { name: 'Level wählen' }).click();
+    await d.getByRole('link', { name: 'Lektion wählen' }).click();
     await expect(page).toHaveURL(/#level$/);
-    await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Lektion wählen' })).toBeVisible();
     await expect(spiel(page)).not.toHaveClass(/\bextras\b/);
   });
 
@@ -647,7 +647,7 @@ test.describe('nachgeladen und Wake Lock', () => {
     });
     await openGame(page);
     await page.evaluate(() => (location.hash = '#level'));
-    await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Lektion wählen' })).toBeVisible();
     expect(asked).toEqual([]);
     await page.evaluate(() => (location.hash = '#lektion-1'));
     await extras(page);

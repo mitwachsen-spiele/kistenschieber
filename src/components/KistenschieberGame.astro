@@ -5,6 +5,8 @@
 // Das Spielfeld steht mit Lektion 1 im HTML; ks-game.ts setzt beim Öffnen einer Lektion Titel, Schild und Knöpfe.
 // Das Schild ist leer, bis es etwas zu sagen gibt (keine Lektionshinweise). Mit den Knöpfen nach dem Sieg liegt es
 // hochkant im Himmel direkt über der Insel, quer in der Spalte neben dem Feld (game.css), nie auf der Insel.
+// Der Start trennt zwei Teile: die Einführung (spielbar, Fortschritt, Haken, großer Knopf) und die Level (nur
+// Ankündigung „kommen bald“, kein Link, nichts Goldenes), Issue #13.
 // Texte wörtlich aus dem Entwurf „Kistenschieber“.
 import '../styles/game.css';
 import { parseLevel } from '../lib/games/sokoban/level';
@@ -20,14 +22,17 @@ import {
   lessonName,
   nextText,
   continueText,
+  INTRO,
   introPill,
+  introSub,
   lockedGo,
   lockedWhy,
   sceneLabel,
+  startPill,
   startStatus,
   thumbLabel,
 } from '../data/games/texts';
-import { CHAPTERS, TEASER, chapterName, chapterRange } from '../data/games/teaser';
+import { CHAPTERS, LEVEL_LEDE, TEASER, chapterName, chapterRange, teaserLine } from '../data/games/teaser';
 import { SETTINGS_DEFAULT } from '../scripts/games/ks-save';
 
 const first = LESSONS[0]!;
@@ -51,17 +56,35 @@ const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
       <h1 id="ks-title" tabindex="-1">
         Kistenschieber
       </h1>
-      <p data-ks="status">{startStatus(0, LESSONS.length, false)}</p>
     </div>
     <div class="scene startscene ks-js">
       <canvas role="img" aria-label={sceneLabel(first)}></canvas>
     </div>
+    <div class="parts">
+      <section class="part now" aria-labelledby="part-intro" data-ks="intro">
+        <h2 id="part-intro">
+          {INTRO.title}{' '}
+          <span class="pill now" data-ks="intro-state">
+            {startPill(false)}
+          </span>
+        </h2>
+        <p class="sub">{introSub(LESSONS.length)}</p>
+        <p data-ks="status">{startStatus(0, LESSONS.length, false)}</p>
+        <a class="btn big primary" href={`#${first.id}`} data-ks="continue">
+          {continueText(false, 1)}
+        </a>
+      </section>
+      <section class="part soon" aria-labelledby="part-level">
+        <h2 id="part-level">
+          {TEASER.title} <span class="pill">{TEASER.pill}</span>
+        </h2>
+        <p>{TEASER.note}</p>
+        <p class="sub">{teaserLine(CHAPTERS)}</p>
+      </section>
+    </div>
     <div class="startbtns">
-      <a class="btn big primary" href={`#${first.id}`} data-ks="continue">
-        {continueText(false, 1)}
-      </a>
       <a class="btn big" href="#level">
-        Level wählen
+        Lektion wählen
       </a>
       <a class="btn big ks-js" href="#einstellungen">
         Einstellungen
@@ -76,10 +99,11 @@ const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
 
   <section id="level" class="screen" aria-labelledby="level-title">
     <h2 id="level-title" tabindex="-1">
-      Level wählen
+      Lektion wählen
     </h2>
     <p class="lede">
       Die Lektionen werden der Reihe nach frei; Überspringen oder „Lösung zeigen“ machen die nächste trotzdem frei.
+      {LEVEL_LEDE}
     </p>
     <h3>
       Einführung{' '}
@@ -102,16 +126,19 @@ const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
         </a>
       ))}
     </div>
-    <h3>
-      {TEASER.title} <span class="pill">{TEASER.pill}</span>
-    </h3>
-    <ul class="chapters">
-      {CHAPTERS.map((c) => (
-        <li>
-          <b>{chapterName(c)}</b> <span class="pill">{chapterRange(c)}</span>
-        </li>
-      ))}
-    </ul>
+    <div class="part soon">
+      <h3>
+        {TEASER.title} <span class="pill">{TEASER.pill}</span>
+      </h3>
+      <p>{TEASER.note}</p>
+      <ul class="chapters">
+        {CHAPTERS.map((c) => (
+          <li>
+            <b>{chapterName(c)}</b> <span class="pill">{chapterRange(c)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   </section>
 
   <section id="einstellungen" class="screen settings" aria-labelledby="set-title" hidden>
@@ -192,7 +219,7 @@ const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
           {lockedGo(first.n)}
         </a>
         <a class="btn big" href="#level">
-          Level wählen
+          Lektion wählen
         </a>
         <a class="btn big" href="#einstellungen">
           Einstellungen

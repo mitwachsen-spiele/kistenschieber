@@ -40,6 +40,13 @@ export function doneCount(kv: ProgressKV, count: number): number {
   return done;
 }
 
+/** Übersprungen und noch nicht nachgeholt (weder gelöst noch mit Lösung gesehen) */
+export function skippedCount(kv: ProgressKV, count: number): number {
+  let skipped = 0;
+  for (let n = 1; n <= count; n++) if (stateOf(kv, n) === 'skipped') skipped++;
+  return skipped;
+}
+
 /** Erste freie offene Lektion; ist keine mehr offen, die letzte */
 export function firstPlayable(kv: ProgressKV, count: number): number {
   for (let n = 1; n <= count; n++) if (unlocked(kv, n) && stateOf(kv, n) === 'open') return n;
@@ -48,11 +55,16 @@ export function firstPlayable(kv: ProgressKV, count: number): number {
 
 export const refOf = (n: number): string => `e${n}`;
 
-/** Wo es weitergeht: die zuletzt geöffnete Lektion, wenn es sie gibt und sie frei ist, sonst firstPlayable */
-export function lastRef(kv: ProgressKV, count: number): number {
+/** Zuletzt geöffnete Lektion, wenn es sie gibt und sie frei ist, sonst 0 */
+function lastOpened(kv: ProgressKV, count: number): number {
   const m = /^e(\d+)$/.exec(kv.last() ?? '');
   const n = m ? Number(m[1]) : 0;
-  return n >= 1 && n <= count && unlocked(kv, n) ? n : firstPlayable(kv, count);
+  return n >= 1 && n <= count && unlocked(kv, n) ? n : 0;
+}
+
+/** Wo es weitergeht: die zuletzt geöffnete Lektion, wenn es sie gibt und sie frei ist, sonst firstPlayable */
+export function lastRef(kv: ProgressKV, count: number): number {
+  return lastOpened(kv, count) || firstPlayable(kv, count);
 }
 
 /** Lektion geöffnet: nur eine freie wird als letzte gemerkt */
@@ -86,9 +98,6 @@ export function markShown(kv: ProgressKV, n: number): void {
   kv.setFlag('shown', n);
 }
 
-/** Die Einführung ist durch, sobald ihre letzte Lektion nicht mehr offen ist (geschafft, gesehen oder übersprungen) */
-export const introDone = (kv: ProgressKV, count: number): boolean => stateOf(kv, count) !== 'open';
-
 /**
  * Schon angefangen? Dann heißt der große Knopf „Weiterspielen“: Eine Lektion ist nicht mehr offen, oder es geht bei
  * einer späteren als der ersten weiter. Sonst „Spielen“
@@ -103,8 +112,38 @@ export type CardState = LessonState | 'locked';
 
 export const cardState = (kv: ProgressKV, n: number): CardState => (unlocked(kv, n) ? stateOf(kv, n) : 'locked');
 
-/** Keine Lektion mehr offen (geschafft, gesehen oder übersprungen): Die Einführung ist abgeschlossen */
-export function allSettled(kv: ProgressKV, count: number): boolean {
-  for (let n = 1; n <= count; n++) if (stateOf(kv, n) === 'open') return false;
+/**
+ * Einführung geschafft (Haken auf Start und Levelwahl): Jede Lektion ist selbst gelöst oder mit Lösung gesehen.
+ * Übersprungene zählen nicht, sie bleiben zum Nachholen
+ */
+export function introComplete(kv: ProgressKV, count: number): boolean {
+  for (let n = 1; n <= count; n++) {
+    const s = stateOf(kv, n);
+    if (s !== 'done' && s !== 'shown') return false;
+  }
   return true;
+}
+
+/** Ziel des großen Knopfs auf dem Startbildschirm; `repeat`: die geschaffte Einführung von vorn */
+export interface StartPoint {
+  readonly n: number;
+  readonly repeat: boolean;
+}
+
+/**
+ * Wohin der große Knopf auf dem Startbildschirm führt. Geschafft: „Einführung wiederholen“ (Lektion 1), außer eine
+ * Wiederholung läuft schon (zuletzt geöffnet eine vor der letzten), dann geht es dort weiter. Nicht geschafft, aber
+ * eine Lektion noch offen: lastRef. Nichts mehr offen: zur ersten übersprungenen, zum Nachholen; nur so führt der
+ * Knopf zum Haken
+ */
+export function startPoint(kv: ProgressKV, count: number): StartPoint {
+  const last = lastOpened(kv, count);
+  if (introComplete(kv, count)) return last >= 1 && last < count ? { n: last, repeat: false } : { n: 1, repeat: true };
+  let skipped = 0;
+  for (let n = count; n >= 1; n--) {
+    const s = stateOf(kv, n);
+    if (s === 'open') return { n: lastRef(kv, count), repeat: false };
+    if (s === 'skipped') skipped = n;
+  }
+  return { n: skipped || lastRef(kv, count), repeat: false };
 }

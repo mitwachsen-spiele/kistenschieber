@@ -23,6 +23,14 @@ for (const colorScheme of ['light', 'dark'] as const)
       expect(await violations(page)).toEqual([]);
     });
 
+    test('Barrierefrei: Startbildschirm mit geschaffter Einführung', async ({ page }) => {
+      const store: Record<string, unknown> = {};
+      for (let n = 1; n <= 15; n++) store[`best.e${n}`] = { moves: 9, pushes: 4 };
+      await openGame(page, { store });
+      await expect(page.getByRole('link', { name: 'Einführung wiederholen' })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+    });
+
     test('Barrierefrei: Einstellungen samt Handwahl', async ({ page }) => {
       await openGame(page, { hash: '#einstellungen' });
       await page.evaluate(() => document.documentElement.classList.add('touch'));
@@ -32,7 +40,7 @@ for (const colorScheme of ['light', 'dark'] as const)
 
     test('Barrierefrei: Levelwahl', async ({ page }) => {
       await openGame(page, { hash: '#level' });
-      await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeVisible();
+      await expect(page.getByRole('heading', { level: 2, name: 'Lektion wählen' })).toBeVisible();
       expect(await violations(page)).toEqual([]);
     });
 
@@ -45,11 +53,11 @@ for (const colorScheme of ['light', 'dark'] as const)
       expect(await violations(page)).toEqual([]);
     });
 
-    test('Barrierefrei: Levelwahl abgeschlossen', async ({ page }) => {
+    test('Barrierefrei: Levelwahl geschafft', async ({ page }) => {
       const store: Record<string, unknown> = {};
-      for (let n = 1; n <= 15; n++) store[`skip.e${n}`] = true;
+      for (let n = 1; n <= 15; n++) store[`shown.e${n}`] = true;
       await openGame(page, { hash: '#level', store });
-      await expect(page.locator('[data-ks="intro-pill"]')).toHaveText('abgeschlossen');
+      await expect(page.locator('[data-ks="intro-pill"]')).toHaveText('✓ geschafft');
       expect(await violations(page)).toEqual([]);
     });
 

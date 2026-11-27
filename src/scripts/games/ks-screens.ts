@@ -4,12 +4,13 @@ import type { Camera } from '../../lib/games/oblique/camera';
 import { type Level, parseLevel } from '../../lib/games/sokoban/level';
 import {
   type ProgressKV,
-  allSettled,
   cardState,
   doneCount,
   firstPlayable,
-  introDone,
+  introComplete,
   lastRef,
+  skippedCount,
+  startPoint,
   started,
 } from '../../lib/games/sokoban/progress';
 import { decoFor, staticLevelWorld } from '../../lib/games/sokoban/scene';
@@ -23,6 +24,7 @@ import {
   lockedGo,
   lockedWhy,
   sceneLabel,
+  startPill,
   startStatus,
 } from '../../data/games/texts';
 import { SETTINGS_DEFAULT, type Hand, type Settings } from './ks-save';
@@ -65,9 +67,14 @@ function need<T extends Element>(root: ParentNode, sel: string): T {
   return el;
 }
 
-/** Start: Titel, wie weit die Einführung ist, Szene der Lektion, bei der es weitergeht, und der große Knopf */
+/**
+ * Start: Titel, Szene der Lektion, bei der es weitergeht, und zwei Teile: die Einführung mit Fortschritt, Haken und
+ * großem Knopf, daneben die Level als Ankündigung (statisch, ohne Link)
+ */
 export class StartScreen {
   private readonly canvas: HTMLCanvasElement;
+  private readonly intro: HTMLElement;
+  private readonly pill: HTMLElement;
   private readonly status: HTMLElement;
   private readonly go: HTMLAnchorElement;
   private n = 1;
@@ -77,22 +84,32 @@ export class StartScreen {
     private readonly host: Host,
   ) {
     this.canvas = need(root, 'canvas');
+    this.intro = need(root, '[data-ks="intro"]');
+    this.pill = need(root, '[data-ks="intro-state"]');
     this.status = need(root, '[data-ks="status"]');
     this.go = need(root, '[data-ks="continue"]');
   }
 
   enter() {
     const { kv } = this.host;
-    this.n = lastRef(kv, COUNT);
-    const lesson = LESSONS[this.n - 1];
-    this.status.textContent = startStatus(doneCount(kv, COUNT), COUNT, introDone(kv, COUNT));
-    this.go.textContent = continueText(started(kv, COUNT), this.n);
+    const complete = introComplete(kv, COUNT);
+    // Geschafft: von vorn, außer eine Wiederholung läuft; sonst nichts mehr offen: zum Nachholen (progress.ts)
+    const { n, repeat } = startPoint(kv, COUNT);
+    this.n = n;
+    const lesson = LESSONS[n - 1];
+    this.intro.classList.toggle('done', complete);
+    this.pill.textContent = startPill(complete);
+    this.pill.classList.toggle('on', complete);
+    this.status.textContent = startStatus(doneCount(kv, COUNT), COUNT, complete, skippedCount(kv, COUNT));
+    this.go.textContent = continueText(started(kv, COUNT), n, repeat);
     this.go.href = lessonHash(this.n);
     if (lesson) this.canvas.setAttribute('aria-label', sceneLabel(lesson));
   }
 
+  /** Höhe der Szene: 30 % des Bildschirms, auf großen hochkant (Tablet) 45 %, damit kein Himmel leer bleibt */
   draw() {
-    drawLesson(this.canvas, this.n, this.host.camera(), { maxS: 1.1, maxH: Math.max(220, innerHeight * 0.4) });
+    const share = innerWidth >= 700 && innerHeight > innerWidth ? 0.45 : 0.3;
+    drawLesson(this.canvas, this.n, this.host.camera(), { maxS: 1.1, maxH: Math.max(200, innerHeight * share) });
   }
 }
 
@@ -127,7 +144,7 @@ export class LevelScreen {
       badge.textContent = text ?? '';
       badge.hidden = text === null;
     });
-    const done = allSettled(kv, COUNT);
+    const done = introComplete(kv, COUNT);
     this.pill.textContent = introPill(COUNT, done);
     this.pill.classList.toggle('on', done);
   }

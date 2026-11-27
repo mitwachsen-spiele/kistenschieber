@@ -17,12 +17,12 @@ Die Werte der Spielseite wechseln mit dem Farbschema (`prefers-color-scheme: dar
 | Unterzeile | `--soft` | #4b5563 | #a9b4c4 | Notizen auf `--card`, `--wood`, `--slot` |
 | Rahmen | `--line`, `--ks-px` | #1d2838 | #0a0f18 | Pixel-Rahmen im Spiel |
 | Holz | `--wood` | #f3ead6 | #1d2533 | Hinweiskasten, Menü im Spiel |
-| Fach | `--slot`, `--frame` | #e2d5ba, #b3a385 | #252f40, #46536a | Regler, Pillen |
+| Fach | `--slot`, `--frame` | #e2d5ba, #b3a385 | #252f40, #46536a | Regler, Pillen, Teil „Level“ auf dem Start |
 | Gold | `--gold`, `--gold-light`, `--gold-dark`, `--gold-edge`, `--on-gold` | #f0a531, #ffd47e, #b46a0c, #b46a0c, #1d2838 | Kante #ffc061 | Einzige Aktionsfarbe: großer Knopf, gedrückte Knöpfe, Fokusring, die Lektion, die dran ist |
 | Geschafft | `--ok` | #2b7a42 | #7fd08f | ✓ auf der Karte |
 | Übersprungen | `--skip` | #a65f08 | #ffc061 | ↷ auf der Karte |
 | Gesehen | `--info` | #2c5f8c | #8cc4f0 | „Mit Lösung gesehen“ |
-| Hell in beiden | `--ok-soft`, `--ok-edge`, `--warn-soft` | #e3f5d6, #3c9656, #ffe2dc | gleich | Pille „abgeschlossen“, Schild bei Sieg und Warnung |
+| Hell in beiden | `--ok-soft`, `--ok-edge`, `--warn-soft` | #e3f5d6, #3c9656, #ffe2dc | gleich | Pille „✓ geschafft“, Schild bei Sieg und Warnung |
 | Wasserblau | `--water-1`, `--water-2` | #8dd0ee, #3f8fc2 | gleich | `theme-color` und Hintergrund der App, Verlauf des App-Symbols (`src/data/pwa.ts`, ein Test hält es gleich mit `tokens.css`) |
 | Kiste | `--crate`, `--crate-dark` | #c58b4d, #6e4526 | gleich | Kistensymbol der Oberfläche |
 
@@ -46,7 +46,8 @@ Beide Schriften sind über `@fontsource` lokal gebündelt, nur die `latin`-Schni
 - **Fokus:** 3 px Gold, 2 px Abstand, auch auf der Spielfläche.
 - **Schild (`.sign`):** helle Fläche, nur mit Meldung (leer unsichtbar, nimmt keinen Platz), `aria-live`; hochkant im Himmel direkt über der Insel, quer in der Spalte neben dem Feld, nie auf der Insel; bei einer Warnung `--warn-soft`, beim Sieg `--ok-soft`.
 - **Karte (`.card.lv`):** Vorschau der Lektion, Titel, Unterzeile, Status-Zeile mit ✓ oder ↷. Hebt sich beim Überfahren um 3 px (nicht bei reduzierter Bewegung). Gesperrt mit Deckkraft 0,62 und grauer Vorschau. Die Lektion, die dran ist, mit goldenem Rahmen innen und außen.
-- **Pille (`.pill`):** kleine Marke neben Überschriften, `.pill.on` grün für „abgeschlossen“.
+- **Pille (`.pill`):** kleine Marke neben Überschriften, `.pill.on` grün für „✓ geschafft“.
+- **Teile des Starts (`.part`):** „Einführung“ (`.part.now`) als Fläche `--card` mit Pixel-Rahmen und dem einzigen goldenen Knopf; „Level“ (`.part.soon`) vertieft auf `--slot` mit gestricheltem Rand in `--frame`, Text ganz in `--soft`, dunkel auf `--sky-deep` (tiefer als die Einführung), ohne Gold, ohne Hover, nichts zum Anklicken; dieselbe Karte unten in der Levelwahl. Pille „jetzt spielbar“ (`.pill.now`) hell mit dunklem Rand, „kommen bald“ gedämpft, beide 14 px. Breit nebeneinander, hochkant untereinander, Handy quer rechts neben Titel, Startbild und Nebenknöpfen. Die Nebenknöpfe des Starts sind dunkel auf `--card`.
 - **Hinweiskasten (`.advice`), Menü (`dialog.menu`):** Holzfläche, das Menü höchstens 380 px bzw. 92 % breit.
 - **Steuerkreuz (`.pad`):** vier Knöpfe 58 px (schmal 54, niedrig 48), beim Drücken golden; die Pfeile drehen sich mit der Kamera.
 
