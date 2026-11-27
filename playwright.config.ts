@@ -20,7 +20,12 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   expect: { timeout: process.env.CI ? 15_000 : 5_000 },
-  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  // In der Pipeline zusätzlich JSON (wackelige Tests in die Zusammenfassung, scripts/flaky-summary.ts) und HTML
+  // (als Artefakt hochgeladen, mit Traces der gescheiterten Versuche). Die Browser-Jobs schreiben Blob-Berichte
+  // (--reporter=github,blob), der Job e2e-merge führt sie zu HTML und JSON zusammen
+  reporter: process.env.CI
+    ? [['github'], ['json', { outputFile: 'test-results/report.json' }], ['html', { open: 'never' }]]
+    : 'list',
   use: { baseURL: 'http://localhost:4321', trace: 'retain-on-failure' },
   // Jedes Projekt steht auch als --project=… in einem Browser-Job von .github/workflows/deploy.yml (geprüft von gates:ci)
   projects: [

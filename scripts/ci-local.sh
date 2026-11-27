@@ -4,8 +4,10 @@
 # (2 CPUs, CPUS=4 für den 4-vCPU-Runner). Feste Wartezeiten, die auf 18 Kernen reichen, reißen erst hier. Strenger als
 # die Pipeline: kein Wiederholen fehlgeschlagener Browser-Tests.
 # Die Pipeline verteilt dieselben Schritte auf Jobs: static (Format, Lint, Architektur, Typen), coverage (npm test),
-# build (Build, verify), e2e-site (Projekt site), e2e-game (Projekt game). Hier laufen sie nacheinander; vorher wird
-# geprüft, dass die Pipeline jedes Projekt aus playwright.config.ts aufruft.
+# build (Build, verify), e2e-site (Projekt site), e2e-game (Projekte game und pwa-update); e2e-merge ist kein Gate und
+# fehlt hier. Hier laufen sie nacheinander, die Browser-Tests je Job in einem eigenen Aufruf; vorher wird geprüft,
+# dass die Pipeline jedes Projekt aus playwright.config.ts aufruft. Die gemessenen Dauern je Job bestimmen die Fristen
+# (Kommentar über `jobs:` in deploy.yml); erfüllt eine Dauer die 2,5×-Regel für ihre Frist nicht mehr, warnt der Lauf.
 # Geprüft wird der Arbeitsstand samt nicht committeter Änderungen (ohne node_modules und Ignoriertes). Nach einem
 # vollen grünen Lauf steht in .ci-local-ok der Tree-Hash des geprüften Stands – gleich `git rev-parse HEAD^{tree}`,
 # sobald genau dieser Stand committet ist. Der Hook .githooks/pre-push verlangt ihn vor jedem Push.
@@ -14,7 +16,9 @@
 set -euo pipefail
 
 CPUS=${CPUS:-2}
-E2E_WARN=120 # Browser-Tests über 2 min: Warnung, der Job der Pipeline hat 7 min samt Einrichten
+# Einrichten auf GitHub je Job in Sekunden, höchstens gemessen in den Läufen vom 27.11.2026 (Kommentar in deploy.yml)
+SETUP_PLAIN=20
+SETUP_BROWSER=40
 ROOT=$(git rev-parse --show-toplevel)
 cd "$ROOT"
 
@@ -92,7 +96,14 @@ step check npm run --silent check
 step test npm test --silent
 step build npm run --silent build
 step verify npm run --silent verify
-step e2e env PLAYWRIGHT_HTML_OPEN=never npx playwright test --workers=2 --retries=0 --reporter=list,html "$@"
+e2e() { env PLAYWRIGHT_HTML_OPEN=never npx playwright test --workers=2 --retries=0 --reporter=list,html "$@"; }
+if [ $# -gt 0 ]; then
+  step e2e e2e "$@"
+else
+  # Je Browser-Job der Pipeline ein Aufruf mit dessen Projekten, damit jede Frist ihre eigene Messung hat
+  step e2e-site e2e --project=site
+  step e2e-game e2e --project=game --project=pwa-update
+fi
 '
 
 docker create --name "$NAME" --cpus="$CPUS" --memory=7g --shm-size=2g -e CI=1 -e ASTRO_TELEMETRY_DISABLED=1 \
@@ -105,11 +116,28 @@ RC=0
 docker start -a "$NAME" | tee "$TMP/log" || RC=$?
 TOTAL=$(($(now) - START))
 
-E2E=$(sed -n 's/^::: e2e *\([0-9]*\)s.*/\1/p' "$TMP/log")
-echo "gates:ci: gesamt ${TOTAL}s, Browser-Tests ${E2E:-–}s ($CPUS CPUs)"
-if [ -n "$E2E" ] && [ "$E2E" -gt "$E2E_WARN" ]; then
-  echo "gates:ci: Warnung – Browser-Tests über $((E2E_WARN / 60)) min, der Job der Pipeline hat 7 min samt Einrichten" >&2
-fi
+echo "gates:ci: gesamt ${TOTAL}s ($CPUS CPUs)"
+# Dauer eines Schritts aus dem Protokoll (0, wenn er nicht lief) und Frist eines Jobs aus deploy.yml
+took() { sed -n "s/^::: $1 *\([0-9]*\)s.*/\1/p" "$TMP/log" | head -1 | grep . || echo 0; }
+deadline() { awk -v job="  $1:" '$0 == job { f = 1 } f && /timeout-minutes:/ { print $2; exit }' .github/workflows/deploy.yml; }
+# Regel: 2,5 × (Dauer + Einrichten) ≤ Frist
+check_job() {
+  local job=$1 setup=$2 t=0 s
+  shift 2
+  for s in "$@"; do t=$((t + $(took "$s"))); done
+  [ "$t" -gt 0 ] || return 0
+  local minutes
+  minutes=$(deadline "$job")
+  echo "gates:ci: Job $job ${t}s (Frist $minutes min)"
+  if [ $((5 * (t + setup))) -gt $((minutes * 120)) ]; then
+    echo "gates:ci: Warnung – Job $job: 2,5 × (${t}s + ${setup}s Einrichten) liegt über seiner Frist von $minutes min" >&2
+  fi
+}
+check_job static "$SETUP_PLAIN" format:check lint arch check
+check_job coverage "$SETUP_PLAIN" test
+check_job build "$SETUP_PLAIN" build verify
+check_job e2e-site "$SETUP_BROWSER" e2e-site
+check_job e2e-game "$SETUP_BROWSER" e2e-game
 
 if [ "$RC" -ne 0 ]; then
   for d in test-results playwright-report; do

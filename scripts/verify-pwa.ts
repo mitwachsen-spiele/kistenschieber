@@ -27,7 +27,7 @@ const DIST = 'dist';
  * Grenze gemessen + 10 %. Angehoben wird erst, wenn weniger als 3 % Luft bleiben, dann wieder auf gemessen + 10 %, mit
  * einem Satz Begründung in der Commit-Nachricht.
  */
-const PRECACHE_BUDGET = 456.1 * 1024; // gemessen 414,6 KiB (424537 B, Schritt 8)
+const PRECACHE_BUDGET = 456 * 1024; // gemessen 414,5 KiB (424420 B, Schritt 9)
 const OPTS: PwaOptions = { origin: SITE.url, manifest: '/manifest.webmanifest', sw: SERVICE_WORKER };
 
 const filesIn = (dir: string): string[] =>
@@ -70,6 +70,7 @@ if (problems.length) {
   process.exit(1);
 }
 const kib = (n: number) => `${(n / 1024).toFixed(1)} KiB`;
+const exact = (n: number) => `${kib(n)} (${n} B)`;
 console.log(`✓ App-Gate: Manifest und Icons gültig, Service Worker speichert alles für ${SERVICE_WORKER.entry}`);
-console.log(`  vorab gespeichert: ${precached.length} Dateien, ${kib(bytes)} von ${kib(PRECACHE_BUDGET)} Budget`);
+console.log(`  vorab gespeichert: ${precached.length} Dateien, ${exact(bytes)} von ${kib(PRECACHE_BUDGET)} Budget`);
 for (const part of precacheParts(precached, read)) console.log(`    ${part.name}: ${kib(part.bytes)}`);

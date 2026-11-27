@@ -112,6 +112,22 @@ describe('ScreenLock', () => {
     expect(log).toEqual(['request', 'request']);
   });
 
+  it('scheitert die Freigabe, bleibt es still und die Sperre gilt als frei', async () => {
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    const { lock, sentinels } = setup();
+    lock.show('spiel');
+    await flush();
+    const s = sentinels[0]!;
+    s.release = () => Promise.reject(new Error('schon frei'));
+    lock.show('level');
+    await flush();
+    await new Promise((r) => setTimeout(r, 0));
+    process.off('unhandledRejection', unhandled);
+    expect(lock.held).toBe(false);
+    expect(unhandled).not.toHaveBeenCalled();
+  });
+
   it('ohne Wake Lock im Browser: nichts', () => {
     const lock = new ScreenLock({ request: null, visible: () => true });
     expect(() => lock.show('spiel')).not.toThrow();

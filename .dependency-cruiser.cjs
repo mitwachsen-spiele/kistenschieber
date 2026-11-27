@@ -1,10 +1,11 @@
 // Architekturregeln (Guard-Gate, `npm run arch`): die Schichten der Seite, maschinell geprüft.
 //   src/lib       generische Bausteine (Würfel-Grafik beim Build, Spiel-Bausteine) – kennt keine Seiteninhalte
 //   src/data      Inhalte und Konfiguration der Seite – nutzt lib, kennt keine Oberfläche
-//   src/scripts   Code im Browser – nur so viel lib wie nötig, nichts aus Node
+//   src/scripts   Code im Browser – aus lib nur src/lib/games und src/lib/voxel/textures.ts, nichts aus Node, kein sharp
 //   src/lib/games, src/data/games – Bausteine und Inhalte des Spiels (Regeln, Löser, Lektionen), laufen im Browser
-//   src/lib/pwa   Manifest und Service Worker der App – nur beim Build (Node)
-//   components, layouts, pages – Oberfläche, darf alles darunter nutzen
+//   src/lib/pwa   Manifest und Service Worker der App – nur beim Build (Node), nie aus Browser-Code oder Spieldaten
+//   src/integrations, components, layouts, pages – Build und Oberfläche, dürfen alles darunter nutzen
+// Tests importiert kein Produktionscode. Die Gates in scripts/ (Node, nach dem Build) liegen außerhalb von src.
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [

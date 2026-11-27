@@ -11,28 +11,29 @@ export default defineConfig({
     hookTimeout: 120_000,
     coverage: {
       provider: 'v8',
-      // nur die reinen Module; Spielregeln (lib/games), Spieldaten (data/games) und die reinen Teile des Browser-Codes
-      // gehören dazu. browser-store.ts greift auf window zu und bleibt draußen wie im Weltenbummler
+      // nur die reinen Module: lib (Spielregeln, Grafik, App), data (Seite, App, Spieldaten), die reinen Teile des
+      // Browser-Codes und die Gates in scripts/. Web Component, Canvas, Menü und Anmeldung des Service Workers prüft der
+      // Browser-Test (e2e/); browser-store.ts greift auf window zu und bleibt draußen wie im Weltenbummler
       include: [
         'src/lib/**/*.ts',
-        'src/data/{site,pwa}.ts',
-        'src/data/games/**/*.ts',
+        'src/data/**/*.ts',
         'src/scripts/games/ks-save.ts',
         'src/scripts/games/ks-router.ts',
         'src/scripts/games/ks-input.ts',
         'src/scripts/games/wake-lock.ts',
         'src/scripts/games/pwa-update.ts',
         'src/scripts/games/pwa-moment.ts',
-        'scripts/{bundles,dist,pwa}.ts',
+        'scripts/{bundles,dist,flaky,pwa}.ts',
       ],
       reporter: [['text', { skipFull: true }], 'text-summary'],
-      // Knapp unter dem gemessenen Stand: Sinkt die Abdeckung, fällt das Gate. Steigt sie, die Schwellen mitziehen.
+      // Knapp unter dem gemessenen Stand (höchstens 1 Punkt): Sinkt die Abdeckung, fällt das Gate. Steigt sie, die
+      // Schwellen mitziehen. Gemessen 98,83/96,75/98,74/98,83 (Schritt 9)
       thresholds: {
-        statements: 90,
-        branches: 85,
-        functions: 90,
-        lines: 90,
-        // Die reinen Browser-Module enger (wie im Weltenbummler)
+        statements: 98,
+        branches: 96,
+        functions: 98,
+        lines: 98,
+        // Die reinen Browser-Module enger (wie im Weltenbummler); gemessen 100/98,64/100/100 (Schritt 9)
         'src/scripts/**/*.ts': { statements: 95, branches: 86, functions: 95, lines: 95 },
       },
     },

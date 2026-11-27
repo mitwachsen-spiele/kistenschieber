@@ -16,13 +16,13 @@ const GAME_CODE = /ks-kistenschieber|serviceWorker/;
 const THREE = /WebGLRenderer|three\.module|webgl/;
 
 export const RULES: Rule[] = [
-  { name: 'Spiel', pages: /^index\.html$/, budget: 55.7 * 1024, forbidden: THREE }, // gemessen 50,6 KB (51833 B, Schritt 8)
+  { name: 'Spiel', pages: /^index\.html$/, budget: 55.7 * 1024, forbidden: THREE }, // gemessen 50,6 KB (51833 B, Schritt 9)
   {
     name: 'Nachgeladen vom Kern',
     pages: /^index\.html$/,
     // Kommt es schon beim Laden, meldet das Gate es (dann wäre es nicht nachgeladen)
     parts: [{ chunks: /\/pwa-register\.[\w-]+\.js$/ }, { chunks: /\/ks-menu\.[\w-]+\.js$/ }],
-    budget: 3.2 * 1024, // gemessen 2,8 KB (2888 B, Schritt 8)
+    budget: 3.1 * 1024, // gemessen 2,8 KB (2888 B, Schritt 9)
     forbidden: THREE,
   },
   {
@@ -52,7 +52,7 @@ const problems = pages.flatMap((file) => check(relative(DIST, file), readFileSyn
 const kib = (n: number) => `${(n / 1024).toFixed(1)} KB`;
 const budgetOf = (name: string) => RULES.find((r) => r.name === name)?.budget ?? 0;
 for (const u of usage.filter((x) => x.page === 'index.html'))
-  console.log(`  ${u.rule}: ${u.file ?? u.page} ${kib(u.bytes)} von ${kib(budgetOf(u.rule))}`);
+  console.log(`  ${u.rule}: ${u.file ?? u.page} ${kib(u.bytes)} (${u.bytes} B) von ${kib(budgetOf(u.rule))}`);
 if (problems.length) {
   console.error(`Bundle-Gate: ${problems.length} Verstoß/Verstöße\n` + problems.map((p) => `  ✖ ${p}`).join('\n'));
   process.exit(1);
