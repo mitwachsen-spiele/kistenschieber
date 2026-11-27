@@ -99,6 +99,11 @@ class KsKistenschieber extends HTMLElement {
       },
       { signal, capture: true },
     );
+    // iPhone und iPad erlauben Ton erst bei einer aktivierenden Geste, und das ist bei Berührung das Loslassen, nicht schon
+    // das Antippen: Ein beim Antippen angelegter AudioContext bliebe dort stumm (wie in Weltenbummler, mitwachsen-touch.ts)
+    const wake = () => this.sfx.unlock();
+    addEventListener('pointerup', wake, { signal, capture: true });
+    addEventListener('touchend', wake, { signal, capture: true, passive: true });
     document.addEventListener(
       'visibilitychange',
       () => {

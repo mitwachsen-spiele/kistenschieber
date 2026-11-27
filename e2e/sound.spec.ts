@@ -94,6 +94,23 @@ test('Einstellungen: „Ton“ auch ohne Touch, „Aus“ wird gemerkt und schal
   expect((await audioLog(page)).notes).toEqual(freqs('step'));
 });
 
+test('Loslassen allein weckt den Ton (iPhone und iPad zählen erst das Loslassen als Geste, #19)', async ({ page }) => {
+  await openGame(page, { hash: '#lektion-1' });
+  await render(page, 4);
+  expect((await audioLog(page)).contexts).toBe(0);
+  // pointerup ohne pointerdown davor: legt den AudioContext an
+  await page.evaluate(() => window.dispatchEvent(new Event('pointerup')));
+  expect(await audioLog(page)).toMatchObject({ contexts: 1, state: 'running' });
+  // touchend weckt einen schlafenden Context
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  expect((await audioLog(page)).state).toBe('suspended');
+  await page.evaluate(() => window.dispatchEvent(new Event('touchend')));
+  expect(await audioLog(page)).toMatchObject({ contexts: 1, state: 'running' });
+});
+
 test('verborgen schläft der Ton, die nächste Geste weckt ihn', async ({ page }) => {
   await openGame(page, { hash: '#lektion-1' });
   await press(page, 'ArrowRight');
