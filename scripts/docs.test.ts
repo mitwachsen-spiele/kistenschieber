@@ -82,7 +82,7 @@ describe('Spec: Speichern', () => {
   const spec = read(SPEC);
 
   it('nennt jeden Schlüssel im localStorage mit Präfix', () => {
-    expect(Object.keys(SETTINGS_DEFAULT)).toEqual(['drehung', 'neigung', 'hand']);
+    expect(Object.keys(SETTINGS_DEFAULT)).toEqual(['drehung', 'neigung', 'hand', 'ton']);
     expect(Object.keys(KEYS)).toEqual(['best', 'skip', 'shown', 'last']);
     const keys = [
       ...Object.keys(SETTINGS_DEFAULT),
@@ -91,7 +91,7 @@ describe('Spec: Speichern', () => {
       KEYS.shown(1).replace(/1$/, 'N'),
       KEYS.last,
     ];
-    expect(keys).toEqual(['drehung', 'neigung', 'hand', 'best.eN', 'skip.eN', 'shown.eN', 'last']);
+    expect(keys).toEqual(['drehung', 'neigung', 'hand', 'ton', 'best.eN', 'skip.eN', 'shown.eN', 'last']);
     expect(keys.map((k) => `${PREFIX}${k}`).filter((k) => !spec.includes(`\`${k}\``))).toEqual([]);
     expect(spec).toContain(`\`${PREFIX}probe\``);
   });

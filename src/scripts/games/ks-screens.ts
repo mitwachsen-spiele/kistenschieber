@@ -27,7 +27,7 @@ import {
   startPill,
   startStatus,
 } from '../../data/games/texts';
-import { SETTINGS_DEFAULT, type Hand, type Settings } from './ks-save';
+import { SETTINGS_DEFAULT, type Hand, type Settings, type Ton } from './ks-save';
 import { lessonHash } from './ks-router';
 import { type RenderOptions, renderWorld } from './render/world';
 
@@ -182,13 +182,14 @@ export class LockedScreen {
   }
 }
 
-/** Einstellungen: Drehung und Neigung mit Vorschau, Zurücksetzen, Seite des Steuerkreuzes */
+/** Einstellungen: Drehung und Neigung mit Vorschau, Zurücksetzen, Ton an oder aus, Seite des Steuerkreuzes */
 export class SettingsScreen {
   private readonly preview: HTMLCanvasElement;
   private readonly back: HTMLAnchorElement;
   private readonly yaw: HTMLInputElement;
   private readonly tilt: HTMLInputElement;
   private readonly hands: HTMLButtonElement[];
+  private readonly tons: HTMLButtonElement[];
   private n = 1;
 
   constructor(
@@ -201,6 +202,7 @@ export class SettingsScreen {
     this.yaw = need(root, '#cam-yaw');
     this.tilt = need(root, '#cam-tilt');
     this.hands = [...root.querySelectorAll<HTMLButtonElement>('[data-hand]')];
+    this.tons = [...root.querySelectorAll<HTMLButtonElement>('[data-ton]')];
     const slider = (inp: HTMLInputElement, key: 'drehung' | 'neigung') => {
       inp.addEventListener(
         'input',
@@ -235,6 +237,15 @@ export class SettingsScreen {
         },
         { signal },
       );
+    for (const b of this.tons)
+      b.addEventListener(
+        'click',
+        () => {
+          this.host.set('ton', b.dataset.ton === 'aus' ? 'aus' : 'an');
+          this.sync();
+        },
+        { signal },
+      );
     // Schon installiert: Die Anleitung zum Installieren braucht es nicht mehr
     const standalone =
       matchMedia('(display-mode: standalone)').matches ||
@@ -242,7 +253,7 @@ export class SettingsScreen {
     need<HTMLElement>(root, '[data-ks="install"]').hidden = standalone;
   }
 
-  /** Regler, Anzeigen und Handwahl auf den gespeicherten Stand */
+  /** Regler, Anzeigen, Ton und Handwahl auf den gespeicherten Stand */
   private sync() {
     const s = this.host.settings();
     const set = (inp: HTMLInputElement, v: number) => {
@@ -254,6 +265,8 @@ export class SettingsScreen {
     set(this.tilt, s.neigung);
     const hand: Hand = s.hand;
     for (const b of this.hands) b.setAttribute('aria-pressed', String(b.dataset.hand === hand));
+    const ton: Ton = s.ton;
+    for (const b of this.tons) b.setAttribute('aria-pressed', String(b.dataset.ton === ton));
   }
 
   enter() {

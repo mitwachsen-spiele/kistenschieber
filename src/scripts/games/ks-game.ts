@@ -2,7 +2,7 @@
 // KistenschieberGame.astro. Tasten, Tippen, Steuerkreuz, Knöpfe und Takt erzeugen neue Zustände; danach zeigt
 // der Bildschirm Zähler, Schild und Knöpfe nach dem Sieg und zeichnet das Feld. Nebenwirkungen eines Zustandswechsels
 // macht nur diese Datei: Bestwert und „mit Lösung gesehen“ speichern, Konfetti werfen (nicht bei weniger Bewegung, nie
-// nach vorgespielter Lösung) und wieder wegnehmen.
+// nach vorgespielter Lösung) und wieder wegnehmen, Töne auslösen (welche, entscheidet ks-sound.ts).
 // Das Menü (statischer <dialog>) öffnet und verdrahtet der Kern selbst: Während einer Lektion ist es der einzige Weg zu
 // Levelwahl, Einstellungen und Lösung, es darf also nie am Nachladen hängen. Nur das Konfetti kommt aus dem
 // nachgeladenen Teil ks-menu.ts: Er wird geholt, sobald eine Lektion offen ist; ein Sieg davor bekommt es dann.
@@ -31,6 +31,7 @@ import { LESSONS, type Lesson } from '../../data/games/lessons';
 import { countText, fieldLabel, lessonName, nextText, signText } from '../../data/games/texts';
 import { type KeyAction, keepsKey, keyAction, isTap, padAngles, tapAt } from './ks-input';
 import { nextHash } from './ks-router';
+import { type Cue, cues } from './ks-sound';
 import { type GameMoment, SAFE_EVENT, WIN_MS } from './pwa-moment';
 import type { Host } from './ks-screens';
 import { renderWorld } from './render/world';
@@ -76,6 +77,8 @@ export class GameScreen {
   private down: { readonly x: number; readonly y: number; readonly id: number } | null = null;
   /** Sieg mit Konfetti, bevor der nachgeladene Teil da war */
   private burstWanted = false;
+  /** Beginn des letzten Schritts mit Ton (Zeit des Spiels, ms) */
+  private lastStep = -Infinity;
   private readonly extras: (want: unknown) => Extras | undefined;
 
   constructor(
@@ -84,6 +87,8 @@ export class GameScreen {
     /** neu zeichnen lassen (im nächsten Bild, mit Test-Uhr sofort) */
     private readonly request: () => void,
     signal: AbortSignal,
+    /** Töne spielen (sfx.ts) */
+    private readonly sound: (cues: readonly Cue[]) => void,
   ) {
     this.gin = need(root, '.gin');
     this.title = need(root, '[data-ks="title"]');
@@ -298,6 +303,9 @@ export class GameScreen {
   private effects(prev: Game, now: number) {
     const g = this.g;
     const { kv } = this.host;
+    const heard = cues(prev, g, this.lastStep);
+    this.lastStep = heard.lastStep;
+    if (heard.cues.length) this.sound(heard.cues);
     if (g.solutionShown && !prev.solutionShown) markShown(kv, this.lesson.n);
     if (g.won && !prev.won) {
       recordWin(kv, this.lesson.n, { moves: g.moves, pushes: g.pushes, shown: g.shownWin });

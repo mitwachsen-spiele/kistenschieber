@@ -114,6 +114,17 @@ Poller (#2e3440, #3a414e, #4a5262) auf Ecken und Mitten der Kaimauer, eine Möwe
 
 Laufen 120 ms, Schieben 170 ms, Ruck 160 ms, „Lösung zeigen“ 1,3-mal langsamer. Bei `prefers-reduced-motion` dauert jede Animation 1 ms, es gibt kein Konfetti, die Karten heben sich nicht, das Steuerkreuz dreht ohne Übergang.
 
+## Ton
+
+Kurz, warm und leise, per WebAudio ohne Dateien (`SOUNDS` in `src/scripts/games/ks-sound.ts`): Sinus und Dreieck, Rauschen nur für das Schaben, Lautstärke höchstens 0,12 vor dem Ausgang (0,6 mit Kompressor), höchstens 6 Töne zugleich.
+
+| Ton | Klang |
+| --- | --- |
+| Schritt | Sinus 190 Hz, 45 ms, sinkt auf 85 %, Lautstärke 0,035; höchstens alle 200 ms |
+| Schub | Dreieck 140 Hz, 110 ms, fällt auf 70 % (Rumms), dazu 120 ms Rauschen durch einen Bandpass um 600 Hz (Schaben) |
+| Einrasten | am Ende des Schubs: Klick (Dreieck 1400 Hz, 30 ms, fällt auf die Hälfte), dann Glockenton C6 (Sinus 1046,5 Hz, 220 ms) mit G6 darüber (1568 Hz, 280 ms, leiser) |
+| „Geschafft!“ | 120 ms nach dem Einrasten C5 E5 G5 C6 (Dreieck, je 160 ms im Abstand von 100 ms, der letzte 450 ms) |
+
 ## Symbol
 
 Seiten- und App-Symbol ist die Kiste des Kais im Standard-Blickwinkel (20°/50°) auf einem Verlauf von `--water-1` nach `--water-2`, ohne Text (`src/data/app-icon.ts`, `src/lib/voxel/icon.ts`, beim Build gerendert): abgerundetes Quadrat mit Radius 22 %, Kiste 62 % breit, mittig und 2 % tiefer. Die maskierbare Fassung (`icon-maskable-512.png`) ist vollflächig ohne Rundung, die Kiste 48 % breit, damit ihr Rahmen im sicheren Kreis von 80 % bleibt. Dazu `favicon.svg`/`.ico`, `apple-touch-icon.png` (eckig, iOS rundet) und das Vorschaubild `og.png` (1200 × 630). Werte in `ICON_LOOK` (`src/data/pwa.ts`).
