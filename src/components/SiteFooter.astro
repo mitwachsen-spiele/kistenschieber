@@ -1,0 +1,16 @@
+---
+import { HOME_URL } from '../data/site';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="inner">
+    <p class="pxf footer-name">mitwachsen-spiele.de</p>
+    <p class="footer-links">
+      <a href="https://larmic.de/impressum/">Impressum und Kontakt</a>
+      <a href={`${HOME_URL}datenschutz/`}>Datenschutz</a>
+      <span>© {year} Lars Michaelis</span>
+    </p>
+  </div>
+</footer>

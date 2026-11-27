@@ -1,0 +1,16 @@
+---
+// Platzhalter, bis das Spiel kommt: Himmel mit Titel, ein kurzer Text und der Weg zu dem, was es schon gibt.
+// Ohne JavaScript, nicht im Suchindex.
+import PlainPage from '../layouts/PlainPage.astro';
+import { HOME_URL, SITE, WELTENBUMMLER_URL } from '../data/site';
+---
+
+<PlainPage heading={SITE.title} description={SITE.description} noindex>
+  <p>
+    Hier kommt bald was: ein neues ruhiges Spiel für Kinder ab 3 Jahren, das man zusammen mit Mama oder Papa spielt.
+  </p>
+  <p>
+    Bis dahin gibt es <a href={WELTENBUMMLER_URL}>Weltenbummler</a>, und alles über die Spiele steht auf
+    <a href={HOME_URL}>mitwachsen-spiele.de</a>.
+  </p>
+</PlainPage>
