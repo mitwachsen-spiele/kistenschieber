@@ -117,8 +117,8 @@ const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
       Einstellungen
     </h2>
     <p class="lede">
-      Nur das Nötigste: der Blickwinkel und auf Handy und Tablet die Seite des Steuerkreuzes. Alles andere ist fest
-      eingestellt. Das Gerät merkt sich die Werte.
+      Nur das Nötigste: der Blickwinkel, der Ton und auf Handy und Tablet die Seite des Steuerkreuzes. Alles andere ist
+      fest eingestellt. Das Gerät merkt sich die Werte.
     </p>
     <div class="opts">
       <a class="btn big primary" href={`#${first.id}`} data-ks="back">
@@ -147,6 +147,24 @@ const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
       <div class="scene">
         <canvas role="img" aria-label="Vorschau der Ansicht"></canvas>
       </div>
+    </section>
+    <section class="setgroup" aria-labelledby="set-sound">
+      <h2 id="set-sound">Ton</h2>
+      <div class="row" role="group" aria-label="Ton">
+        <b>Ton</b>
+        <div class="opts">
+          <button class="btn" type="button" aria-pressed="true" data-ton="an">
+            An
+          </button>
+          <button class="btn" type="button" aria-pressed="false" data-ton="aus">
+            Aus
+          </button>
+        </div>
+      </div>
+      <p class="note">
+        Leise Töne beim Laufen und Schieben, ein Klick, wenn eine Kiste auf ihrem Ziel einrastet, und eine kleine
+        Melodie bei „Geschafft!“.
+      </p>
     </section>
     <section class="setgroup touch-only" aria-labelledby="set-hand">
       <h2 id="set-hand">Bedienung</h2>

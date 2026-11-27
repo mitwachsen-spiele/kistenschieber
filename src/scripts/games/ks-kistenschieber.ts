@@ -7,6 +7,8 @@
 // (auch für jeden Takt einer Animation: ohne Test-Uhr läuft der Takt per requestAnimationFrame, solange etwas läuft).
 // Klasse `playing` (an der Komponente und an body) nur, solange eine freie Lektion gespielt wird: Spielfeld im ganzen
 // Bildschirm, ohne Scrollen, Bildschirm bleibt an (Wake Lock). Ein Bildschirmwechsel schließt das Menü im Spiel.
+// Ton (sfx.ts): Den AudioContext legt erst die erste Geste an (Taste, Zeiger), nie mit „Ton: Aus“; ist die Seite
+// verborgen, schläft er, die nächste Geste weckt ihn.
 import { type Camera, clampCamera, makeCamera } from '../../lib/games/oblique/camera';
 import { browserStore } from './browser-store';
 import { loadSettings, progressKV, saveSetting, type Settings, type Store } from './ks-save';
@@ -15,6 +17,7 @@ import { route, type Route } from './ks-router';
 import { COUNT, type Host, LevelScreen, LockedScreen, SettingsScreen, StartScreen } from './ks-screens';
 import { GameScreen, type Spot } from './ks-game';
 import { watchTouch } from './ks-touch';
+import { Sfx } from './sfx';
 import { type ScreenLock, watchWakeLock } from './wake-lock';
 import { type GameMoment, type Screen as Section, SAFE_EVENT } from './pwa-moment';
 
@@ -31,6 +34,7 @@ class KsKistenschieber extends HTMLElement {
   private locked!: LockedScreen;
   private play!: GameScreen;
   private wake!: ScreenLock;
+  private readonly sfx = new Sfx();
   private kv!: Host['kv'];
   private shown: Section = 'start';
   private queued = false;
@@ -42,6 +46,7 @@ class KsKistenschieber extends HTMLElement {
     const { signal } = this.globals;
     this.store = browserStore().store;
     this.settings = loadSettings(this.store);
+    this.sfx.muted = this.settings.ton === 'aus';
     this.cam = this.makeCam();
     watchTouch(signal);
     this.wake = watchWakeLock(signal);
@@ -53,6 +58,12 @@ class KsKistenschieber extends HTMLElement {
         this.settings = { ...this.settings, [key]: value };
         saveSetting(this.store, key, value);
         this.cam = this.makeCam();
+        if (key === 'ton') {
+          this.sfx.muted = value === 'aus';
+          // Ausgeschaltet schläft der Ton; eingeschaltet weckt ihn der Klick auf „An“
+          if (this.sfx.muted) this.sfx.suspend();
+          else this.sfx.unlock();
+        }
       },
       camera: () => this.cam,
     };
@@ -60,12 +71,28 @@ class KsKistenschieber extends HTMLElement {
     this.prefs = new SettingsScreen(this.section('einstellungen'), host, signal);
     this.levels = new LevelScreen(this.section('level'), host);
     this.locked = new LockedScreen(this.section('gesperrt'), host);
-    this.play = new GameScreen(this.section('spiel'), host, () => this.request(), signal);
+    this.play = new GameScreen(
+      this.section('spiel'),
+      host,
+      () => this.request(),
+      signal,
+      (c) => this.sfx.play(c),
+    );
     addEventListener('hashchange', () => this.show(true), { signal });
     addEventListener(
       'keydown',
       (e) => {
+        this.sfx.unlock();
         if (this.shown === 'spiel') this.play.onKey(e);
+      },
+      { signal },
+    );
+    // Jede Geste darf den Ton wecken (vor den Handlern der Knöpfe und des Spielfelds)
+    addEventListener('pointerdown', () => this.sfx.unlock(), { signal, capture: true });
+    document.addEventListener(
+      'visibilitychange',
+      () => {
+        if (document.visibilityState === 'hidden') this.sfx.suspend();
       },
       { signal },
     );
@@ -87,6 +114,7 @@ class KsKistenschieber extends HTMLElement {
 
   disconnectedCallback() {
     this.globals?.abort();
+    this.sfx.close();
     document.body.classList.remove('playing');
     this.globals = null;
     this.observer?.disconnect();

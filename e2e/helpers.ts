@@ -230,3 +230,100 @@ export const fakeWakeLock = (page: Page) =>
 
 /** Was die vorgetäuschte Wake-Lock-Sperre erlebt hat */
 export const wakeLog = (page: Page) => page.evaluate(() => (window as unknown as { __wakeLog: string[] }).__wakeLog);
+
+/** Was der vorgetäuschte AudioContext erlebt hat: angelegte Contexts, Zustand des letzten, gespielte Töne */
+export interface AudioLog {
+  contexts: number;
+  state: string;
+  /** je Ton die Frequenz (Rauschen: `noise`) */
+  notes: (number | 'noise')[];
+}
+
+/**
+ * AudioContext vortäuschen, vor dem ersten Skript der Seite (headless erklingt nichts, gezählt wird hier): Jeder
+ * gestartete Ton landet in `window.__audio.notes`, mit seiner Frequenz
+ */
+export const fakeAudio = (page: Page) =>
+  page.addInitScript(() => {
+    const log = { contexts: 0, state: 'none', notes: [] as (number | 'noise')[] };
+    (window as unknown as { __audio: typeof log }).__audio = log;
+    const param = () => {
+      const p = {
+        value: 0,
+        setValueAtTime(v: number) {
+          p.value = v;
+        },
+        exponentialRampToValueAtTime() {},
+        setTargetAtTime() {},
+      };
+      return p;
+    };
+    const node = () => ({ connect: (n: unknown) => n, disconnect() {} });
+    // Ein Ton endet gleich nach dem Einplanen (onended), damit die Grenze der Stimmen (sfx.ts) nicht zuschlägt
+    const source = (freq: () => number | 'noise') => {
+      const src = {
+        ...node(),
+        onended: null as (() => void) | null,
+        start() {
+          log.notes.push(freq());
+        },
+        stop() {
+          setTimeout(() => src.onended?.(), 0);
+        },
+      };
+      return src;
+    };
+    class FakeAudioContext {
+      state = 'running';
+      currentTime = 0;
+      sampleRate = 8000;
+      destination = node();
+      constructor() {
+        log.contexts++;
+        log.state = this.state;
+      }
+      private set(s: string) {
+        this.state = log.state = s;
+        return Promise.resolve();
+      }
+      resume() {
+        return this.set('running');
+      }
+      suspend() {
+        return this.set('suspended');
+      }
+      close() {
+        return this.set('closed');
+      }
+      createGain() {
+        return { ...node(), gain: param() };
+      }
+      createDynamicsCompressor() {
+        return node();
+      }
+      createBiquadFilter() {
+        return { ...node(), type: '', frequency: param(), Q: param() };
+      }
+      createOscillator() {
+        const frequency = param();
+        return Object.assign(
+          source(() => frequency.value),
+          { type: '', frequency },
+        );
+      }
+      createBufferSource() {
+        return Object.assign(
+          source(() => 'noise' as const),
+          { buffer: null },
+        );
+      }
+      createBuffer(_channels: number, length: number) {
+        const data = new Float32Array(length);
+        return { getChannelData: () => data };
+      }
+    }
+    Object.defineProperty(window, 'AudioContext', { configurable: true, value: FakeAudioContext });
+  });
+
+/** Was der vorgetäuschte AudioContext erlebt hat */
+export const audioLog = (page: Page) => page.evaluate(() => (window as unknown as { __audio: AudioLog }).__audio);
