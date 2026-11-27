@@ -20,6 +20,7 @@ export default defineConfig({
         'src/scripts/games/ks-save.ts',
         'src/scripts/games/ks-router.ts',
         'src/scripts/games/ks-input.ts',
+        'src/scripts/games/ks-sound.ts',
         'src/scripts/games/wake-lock.ts',
         'src/scripts/games/pwa-update.ts',
         'src/scripts/games/pwa-moment.ts',

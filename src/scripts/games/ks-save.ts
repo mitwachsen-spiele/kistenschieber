@@ -10,6 +10,7 @@ export const PREFIX = 'kistenschieber.';
 export type Store = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
 export type Hand = 'rechts' | 'links';
+export type Ton = 'an' | 'aus';
 
 export interface Settings {
   /** Drehung der Kamera in Grad */
@@ -18,9 +19,11 @@ export interface Settings {
   readonly neigung: number;
   /** Seite des Steuerkreuzes */
   readonly hand: Hand;
+  /** Töne des Spiels */
+  readonly ton: Ton;
 }
 
-export const SETTINGS_DEFAULT: Settings = { drehung: 20, neigung: 50, hand: 'rechts' };
+export const SETTINGS_DEFAULT: Settings = { drehung: 20, neigung: 50, hand: 'rechts', ton: 'an' };
 export const RANGES = { drehung: [0, 45], neigung: [20, 80] } as const;
 
 /** Schlüssel ohne Präfix */
@@ -53,6 +56,8 @@ const inRange = (v: unknown, [lo, hi]: readonly [number, number]): v is number =
 
 const isHand = (v: unknown): v is Hand => v === 'rechts' || v === 'links';
 
+const isTon = (v: unknown): v is Ton => v === 'an' || v === 'aus';
+
 const isCount = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0;
 
 /** Bestwert: ganze Zahlen, mindestens ein Zug, nicht mehr Schübe als Züge */
@@ -66,10 +71,12 @@ export function loadSettings(store: Store): Settings {
   const drehung = read(store, 'drehung');
   const neigung = read(store, 'neigung');
   const hand = read(store, 'hand');
+  const ton = read(store, 'ton');
   return {
     drehung: inRange(drehung, RANGES.drehung) ? drehung : SETTINGS_DEFAULT.drehung,
     neigung: inRange(neigung, RANGES.neigung) ? neigung : SETTINGS_DEFAULT.neigung,
     hand: isHand(hand) ? hand : SETTINGS_DEFAULT.hand,
+    ton: isTon(ton) ? ton : SETTINGS_DEFAULT.ton,
   };
 }
 

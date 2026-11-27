@@ -6,7 +6,7 @@ import { defineConfig, devices } from '@playwright/test';
 /** Specs der Seite: Startbildschirm, Einstellungen, Adressen, 404, installierbar (Projekt `site`) */
 const SITE = /(site|installable)\.spec\.ts$/;
 /** Specs, die im Spiel spielen oder es prüfen (Projekt `game`) */
-const GAME = /(game|touch|a11y|pwa)\.spec\.ts$/;
+const GAME = /(game|touch|a11y|pwa|sound)\.spec\.ts$/;
 /** Spec der App-Updates (Projekt `pwa-update`) */
 const UPDATE = /pwa-update\.spec\.ts$/;
 

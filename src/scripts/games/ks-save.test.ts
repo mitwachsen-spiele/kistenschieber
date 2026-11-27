@@ -26,25 +26,26 @@ const brokenStore: Store = {
 };
 
 describe('Einstellungen', () => {
-  it('ohne Werte die Standardwerte 20°, 50°, rechte Hand', () => {
-    expect(loadSettings(memoryStore())).toEqual({ drehung: 20, neigung: 50, hand: 'rechts' });
+  it('ohne Werte die Standardwerte 20°, 50°, rechte Hand, Ton an', () => {
+    expect(loadSettings(memoryStore())).toEqual({ drehung: 20, neigung: 50, hand: 'rechts', ton: 'an' });
   });
 
   it('gültige Werte inklusive der Grenzen', () => {
-    expect(loadSettings(memoryStore({ drehung: '0', neigung: '80', hand: '"links"' }))).toEqual({
+    expect(loadSettings(memoryStore({ drehung: '0', neigung: '80', hand: '"links"', ton: '"aus"' }))).toEqual({
       drehung: 0,
       neigung: 80,
       hand: 'links',
+      ton: 'aus',
     });
     expect(loadSettings(memoryStore({ drehung: '45', neigung: '20' }))).toMatchObject({ drehung: 45, neigung: 20 });
   });
 
   it.each([
-    ['außerhalb', { drehung: '46', neigung: '19', hand: '"mitte"' }],
-    ['negativ', { drehung: '-1', neigung: '81', hand: '"Links"' }],
-    ['falscher Typ', { drehung: '"30"', neigung: 'true', hand: '1' }],
-    ['kein JSON', { drehung: 'drei', neigung: '{', hand: 'links' }],
-    ['null', { drehung: 'null', neigung: 'null', hand: 'null' }],
+    ['außerhalb', { drehung: '46', neigung: '19', hand: '"mitte"', ton: '"leise"' }],
+    ['negativ', { drehung: '-1', neigung: '81', hand: '"Links"', ton: '"Aus"' }],
+    ['falscher Typ', { drehung: '"30"', neigung: 'true', hand: '1', ton: 'false' }],
+    ['kein JSON', { drehung: 'drei', neigung: '{', hand: 'links', ton: 'aus' }],
+    ['null', { drehung: 'null', neigung: 'null', hand: 'null', ton: 'null' }],
   ])('%s → Standardwerte', (_, init) => {
     expect(loadSettings(memoryStore(init))).toEqual(SETTINGS_DEFAULT);
   });
@@ -53,9 +54,11 @@ describe('Einstellungen', () => {
     const store = memoryStore();
     saveSetting(store, 'drehung', 30);
     saveSetting(store, 'hand', 'links');
+    saveSetting(store, 'ton', 'aus');
     expect(store.data.get('kistenschieber.drehung')).toBe('30');
     expect(store.data.get('kistenschieber.hand')).toBe('"links"');
-    expect(loadSettings(store)).toEqual({ drehung: 30, neigung: 50, hand: 'links' });
+    expect(store.data.get('kistenschieber.ton')).toBe('"aus"');
+    expect(loadSettings(store)).toEqual({ drehung: 30, neigung: 50, hand: 'links', ton: 'aus' });
   });
 });
 

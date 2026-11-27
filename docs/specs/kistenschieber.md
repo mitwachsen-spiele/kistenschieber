@@ -18,6 +18,7 @@ Umgesetzt ist es in reinen, getesteten Teilen und einer Web Component:
 | Die 15 Lektionen, Texte, Stil „An der Kaje“, Ausblick auf die Level | [`src/data/games/`](../../src/data/games/) (`lessons.ts`, `texts.ts`, `kaje.ts`, `teaser.ts`) | `lessons.test.ts`, `texts.test.ts`, `kaje.test.ts`, `teaser.test.ts` |
 | Bildschirme per Hash | [`src/scripts/games/ks-router.ts`](../../src/scripts/games/ks-router.ts) | `ks-router.test.ts` |
 | Eingabe: Tasten, Wischen, Antippen, Steuerkreuz | [`src/scripts/games/ks-input.ts`](../../src/scripts/games/ks-input.ts) | `ks-input.test.ts`, `e2e/touch.spec.ts` |
+| Ton: welcher Zustandswechsel welchen Ton auslöst, wie die Töne klingen; gespielt per WebAudio | [`src/scripts/games/ks-sound.ts`](../../src/scripts/games/ks-sound.ts), [`sfx.ts`](../../src/scripts/games/sfx.ts) | `ks-sound.test.ts`, `e2e/sound.spec.ts` |
 | Speichern | [`src/scripts/games/ks-save.ts`](../../src/scripts/games/ks-save.ts) | `ks-save.test.ts` |
 | Bildschirm bleibt an | [`src/scripts/games/wake-lock.ts`](../../src/scripts/games/wake-lock.ts) | `wake-lock.test.ts` |
 | App-Updates an sicheren Stellen | [`src/scripts/games/pwa-update.ts`](../../src/scripts/games/pwa-update.ts), [`pwa-moment.ts`](../../src/scripts/games/pwa-moment.ts) | `pwa-update.test.ts`, `e2e/pwa-update.spec.ts` |
@@ -83,7 +84,9 @@ Der Spielzustand (`state.ts`) ist ein reiner Reducer: Jede Funktion bekommt den 
 | **Startbildschirm:** „Spielen“, solange nichts angefangen ist, sonst „Weiterspielen: Lektion N“ (zuletzt geöffnete freie Lektion, sonst die erste offene); darunter „Einführung: x von 15 Lektionen geschafft“ bzw. nach der Einführung der Hinweis, dass die Level folgen | `progress.test.ts`, `texts.test.ts`, `e2e/site.spec.ts` |
 | **Bildschirme per Hash:** leer, `#start`, `#spiel` Start; `#level` Levelwahl; `#einstellungen`; `#lektion-1` bis `#lektion-15`. `#level-N` wird zu `#level`, Unbekanntes zum Start, beides ohne neuen Eintrag im Verlauf. Tab-Titel „X · Kistenschieber“. Nach einem Wechsel steht die Seite oben, der Fokus liegt auf der Überschrift bzw. im Spiel auf dem Feld | `ks-router.test.ts`, `e2e/site.spec.ts` |
 | **Rahmen ums Feld:** Der goldene Fokusrahmen des Spielfelds erscheint nur, wenn es mit Tab angesteuert wurde; Klicken, Tippen und Pfeiltasten zeigen keinen (sonst läge das Feld beim Spielen ständig im Rahmen) | `e2e/game.spec.ts` |
-| **Einstellungen:** Drehung 0–45° (Standard 20°), Neigung 20–80° (Standard 50°) mit Vorschau, wirken sofort und bleiben gespeichert; „Zurücksetzen“. Ein Regler gibt nach der Änderung den Fokus ab. Die Handwahl gibt es nur mit Touch | `ks-save.test.ts`, `camera.test.ts`, `e2e/site.spec.ts` |
+| **Einstellungen:** Drehung 0–45° (Standard 20°), Neigung 20–80° (Standard 50°) mit Vorschau, wirken sofort und bleiben gespeichert; „Zurücksetzen“. Ein Regler gibt nach der Änderung den Fokus ab. „Ton“ An oder Aus (Standard An) auf allen Geräten, die Handwahl nur mit Touch | `ks-save.test.ts`, `camera.test.ts`, `e2e/site.spec.ts`, `e2e/sound.spec.ts` |
+| **Ton:** Ein Schritt tickt ganz leise, höchstens alle 200 ms (`STEP_GAP`, ein langer Laufweg tickt nur jeden zweiten Schritt); ein Schub poltert kurz und hölzern; landet eine Kiste auf einem Ziel, rastet sie am Ende des Schubs mit Klick und kleinem Glockenton ein; „Geschafft!“ spielt danach eine kurze Melodie. Beim Vorspielen nur Einrasten und Melodie. Zug zurück, Neustart, Nochmal, Tipp, Anstoßen und eine Kiste ohne Platz dahinter sind still, auch Zug zurück auf einen alten Sieg | `ks-sound.test.ts`, `e2e/sound.spec.ts` |
+| **Ton erst nach einer Geste:** Den AudioContext legt erst die erste Taste oder Berührung an, mit „Ton: Aus“ nie. Höchstens 6 Töne zugleich, alle leise (Lautstärke höchstens 0,12) und unter 1 s. Ist die Seite verborgen, schläft der Ton; die nächste Geste weckt ihn. Keine Audiodateien | „vor der ersten Geste kein AudioContext; dann Schritte, Schieben, Einrasten und „Geschafft!““ in `e2e/sound.spec.ts`, „verborgen schläft der Ton, die nächste Geste weckt ihn“ in `e2e/sound.spec.ts`, `ks-sound.test.ts` |
 | **Bildschirm bleibt an:** Auf dem Spielfeld fordert das Spiel einen Wake Lock an, solange die Seite zu sehen ist; beim Verlassen und Verstecken gibt es ihn frei, beim Zurückkommen fordert es neu an. Fehler bleiben still | `wake-lock.test.ts`, `e2e/game.spec.ts` |
 | **Lektionen:** 15 Felder wörtlich aus dem Entwurf; jede gespeicherte Lösung gewinnt mit genau ihren Zügen und Schüben, der Löser findet von jeder Startstellung unter der Grenze 20000 einen ersten Schub | `lessons.test.ts` |
 
@@ -94,7 +97,7 @@ Der Spielzustand (`state.ts`) ist ein reiner Reducer: Jede Funktion bekommt den 
 - Der Löser arbeitet in Grenzen statt nach Uhrzeit: Der Test zählt die bekannten Stellungen, nicht die Millisekunden. *`lessons.test.ts`*
 - Gespeichert wird nur, was geprüft gelesen werden kann; ein Speicher, der Fehler wirft, liefert die Standardwerte, das Spiel läuft weiter. *`ks-save.test.ts`*
 - Seiten außer dem Spiel (404) laden kein Spiel und melden keinen Service Worker an. *Bundle-Gate (`scripts/bundles.test.ts`)*
-- Kein Three.js und kein WebGL auf der Spielseite; der Kern bleibt im Budget, Menü-Konfetti und Anmeldung des Service Workers kommen nachgeladen. *Bundle-Gate, `scripts/guards.test.ts`*
+- Kein Three.js und kein WebGL auf der Spielseite; der Kern bleibt im Budget, Menü-Konfetti und Anmeldung des Service Workers kommen nachgeladen. Der Ton gehört zum Kern: Safari auf iPhone und iPad weckt einen AudioContext nur im Handler der Geste selbst, ein nachgeladener Teil käme dafür zu spät. *Bundle-Gate, `scripts/guards.test.ts`*
 - Ohne JavaScript bleibt die Seite als Dokument lesbar (Titel, die 15 Lektionen mit Idee, ein `<noscript>`-Hinweis, dass das Spiel JavaScript braucht); Spielfeld und Einstellungen sind dann ausgeblendet. *„ohne JavaScript“ in `e2e/site.spec.ts`*
 - Barrierefreiheit nach WCAG 2.2 AA auf jedem Bildschirm und Zustand, hell und dunkel. *`e2e/a11y.spec.ts`*
 - Alle Knöpfe sind auf Handy und Tablet mindestens 48 px groß, nichts scrollt quer, das Spielfeld passt hoch und quer ohne Scrollen. *`e2e/touch.spec.ts`, `e2e/game.spec.ts`*
@@ -113,6 +116,7 @@ Das Spiel lässt sich als App auf den Home-Bildschirm legen und startet danach a
 | Caches | Name `kistenschieber-<Version>`, die Version ist ein Hash über Pfade und Inhalte. Alte `kistenschieber-*`-Caches löscht erst die aktive neue Version, und nur, wenn keine Spielseite mehr offen ist |
 | Dauerhafter Speicher | Als installierte App (`display-mode: standalone` oder `navigator.standalone`) bittet die Seite still um `navigator.storage.persist()`. Im Browser-Tab nicht, weil Firefox dort mit einem Dialog nachfragt |
 | Wake Lock | siehe Regel „Bildschirm bleibt an“; speichert nichts |
+| Ton | WebAudio ohne Dateien, lädt nichts nach und speichert nichts außer der Einstellung `kistenschieber.ton` |
 
 | Regel | Test |
 | --- | --- |
@@ -147,6 +151,7 @@ Alles liegt nur im `localStorage` des Geräts, jeder Schlüssel mit dem Präfix 
 | `kistenschieber.drehung` | Zahl 0–45 | Drehung der Kamera, Standard 20 |
 | `kistenschieber.neigung` | Zahl 20–80 | Neigung der Kamera, Standard 50 |
 | `kistenschieber.hand` | `"rechts"` oder `"links"` | Seite des Steuerkreuzes, Standard rechts |
+| `kistenschieber.ton` | `"an"` oder `"aus"` | Töne des Spiels, Standard an |
 | `kistenschieber.best.eN` | `{ "moves": …, "pushes": … }` | Bestwert der Lektion N: ganze Zahlen, mindestens ein Zug, nicht mehr Schübe als Züge |
 | `kistenschieber.skip.eN` | `true` | Lektion N übersprungen |
 | `kistenschieber.shown.eN` | `true` | Lektion N mit Lösung gesehen |
@@ -173,7 +178,7 @@ Alles liegt nur im `localStorage` des Geräts, jeder Schlüssel mit dem Präfix 
 | Spielfeld | Oben Menü-Knopf, Titel „Lektion N: Titel“ und Zähler „N Züge“; darunter das Feld (Canvas `role=img`, fokussierbar, beschriftet), das Schild (`aria-live`), nach dem Sieg „Weiter …“ und „Nochmal“, unten „Zug zurück“ und „Tipp“. Hochkant Knöpfe unter dem Feld, quer daneben. Safe Areas, kein Zoom per Doppeltipp, kein Ziehen zum Neuladen |
 | Konfetti | Nach einem eigenen Sieg 18 Teilchen je Kiste in den Farben des Kais, verglühen nach 1,4 s; „Zug zurück“, „Neu starten“ und „Nochmal“ räumen es sofort weg |
 | Levelwahl | Überschrift „Level wählen“ mit Leittext; „Einführung“ mit Pille „15 Lektionen“ bzw. „abgeschlossen“; je Lektion eine Karte mit Vorschau, Titel, Kistenzahl und kürzestem Weg, Zeile je Status (✓ geschafft, ↷ übersprungen, mit Lösung gesehen, „Noch zu“ ausgegraut); die Lektion, die dran ist, mit goldenem Rahmen. Darunter „Level“ mit Pille „kommen bald“ und nur die Kapitel 1 „Am Kai“ und 2 „Im Speicher“, ohne Links |
-| Einstellungen | „Ansicht“ mit den Reglern Drehung und Neigung und Vorschau, „Bedienung“ (Handwahl, nur mit Touch), „Als App installieren“ mit der Anleitung aus dem Entwurf |
+| Einstellungen | „Ansicht“ mit den Reglern Drehung und Neigung und Vorschau, „Ton“ (An oder Aus, auf allen Geräten), „Bedienung“ (Handwahl, nur mit Touch), „Als App installieren“ mit der Anleitung aus dem Entwurf |
 | Dunkel | Mit `prefers-color-scheme: dark` wechseln Himmel, Flächen und Rahmen; Knöpfe, Schild und Zähler bleiben hell mit dunkler Schrift |
 
 ## Bewusst anders als im Entwurf
@@ -190,6 +195,7 @@ Alles liegt nur im `localStorage` des Geräts, jeder Schlüssel mit dem Präfix 
 - Die Spielknöpfe (`.btn.gbtn`) bleiben auch bei niedriger Höhe 48 px hoch statt 44 px, damit jedes Ziel mindestens 48 px groß ist.
 - Die Lektion, die dran ist, bekommt in der Levelwahl einen goldenen Rahmen statt der Goldfläche der Kachel aus der Menüführung; das Vorschaubild bleibt sichtbar.
 - Die Statuszeile des Startbildschirms steht in `--text` statt `--muted` (sonst nur 4,46:1 auf dem Himmel), die Unterzeile gesperrter Karten in `--text` statt `--soft` (unter Deckkraft .62 sonst unter 4,5:1, axe).
+- Ton (Issue #9) gibt es im Entwurf nicht: die Gruppe „Ton“ in den Einstellungen, ihr Hinweis und im Leittext „der Ton“ sind neu.
 - Kein Sprunglink auf der Spielseite: `#inhalt` wäre ein unbekannter Hash und führte zum Start, vor dem Inhalt steht nichts.
 
 ## Haken für die Browser-Tests
@@ -203,6 +209,7 @@ Die Browser-Tests (`e2e/`, Playwright) zeichnen Bilder selbst, statt auf Uhrzeit
 | Steht | Klasse `ready` (Stand geladen, Bildschirme verdrahtet) und `settled` (erstes Bild des gezeigten Bildschirms gezeichnet; jeder Wechsel nimmt sie weg) an `<ks-kistenschieber>`; `openGame` und `reloadGame` warten auf `settled`. Klasse `extras` am Spielfeld, sobald der nachgeladene Teil da ist |
 | Speicher | `seed(page, values)` belegt den Speicher einmal je Tab vor (Schlüssel ohne Präfix), `stored(page, key)` liest |
 | Wake Lock | `fakeWakeLock(page)` ersetzt `navigator.wakeLock` (headless lehnt ab), `wakeLog(page)` liest mit |
+| Ton | `fakeAudio(page)` ersetzt `AudioContext` und merkt jeden gestarteten Ton mit Frequenz, `audioLog(page)` liest mit (Zahl der Contexts, Zustand, Töne) |
 | Live | Ohne Test-Uhr laufen nur „ohne Test-Uhr läuft der Takt von selbst bis „Geschafft!““ (`e2e/game.spec.ts`) und die Tests der App (`e2e/pwa.spec.ts`, `e2e/pwa-update.spec.ts`). Nur `e2e/pwa-update.spec.ts` hat eigene Fristen (60 s je Test, Polls bis 30 s), weil es echte Abläufe sind (zwei Fassungen, Installation, Neuladen); sie fangen nur Hänger ab |
-| Projekte | `site` (`site.spec.ts`, `installable.spec.ts`), `game` (`game`, `touch`, `a11y`, `pwa`; Service Worker blockiert außer in `pwa.spec.ts`), `pwa-update` (ein Worker) in `playwright.config.ts` |
+| Projekte | `site` (`site.spec.ts`, `installable.spec.ts`), `game` (`game`, `touch`, `a11y`, `pwa`, `sound`; Service Worker blockiert außer in `pwa.spec.ts`), `pwa-update` (ein Worker) in `playwright.config.ts` |
 | Lint | In `e2e/` sind `waitForTimeout`, Helfer `frames`/`waitFrames` und `goto('/')` (auch mit `?…` oder `#…`) außerhalb von `e2e/helpers.ts` verboten (`eslint.config.js`) |

@@ -11,6 +11,7 @@ Gebaut mit [Astro](https://astro.build), ausgeliefert als statische Seite über 
 - **Ziel:** alle Kisten auf die gelben Felder. Die Figur schiebt, sie zieht nie.
 - **Bedienen:** Feld antippen, und die Figur läuft hin; wischen für einen Schritt; eine Kiste antippen zeigt Pfeile, ein Pfeil schiebt sie. Auf Handy und Tablet gibt es dazu ein Steuerkreuz (Seite wählbar). Am Computer: Pfeiltasten oder WASD, Z zurück, R neu, H Tipp, M oder Esc Menü.
 - **Hilfen:** „Zug zurück“ geht immer, auch nach einem Neustart. Eine Kiste, die kein Ziel mehr erreichen kann (Ecke oder Wand ohne Ziel), bekommt einen roten Rand. „Tipp“ zeigt die nächste Kiste und Richtung, „Lösung zeigen“ spielt die Lektion vor. Nach drei Rückschlägen bietet das Spiel das Überspringen an.
+- **Ton:** leise Töne beim Laufen und Schieben, ein Klick, wenn eine Kiste auf ihrem Ziel einrastet, eine kleine Melodie bei „Geschafft!“. In den Einstellungen abschaltbar („Ton: Aus“). Ohne Audiodateien, erst nach dem ersten Tippen oder Tastendruck.
 - **Fortschritt:** Lektionen werden der Reihe nach frei. Geschafft, übersprungen oder mit Lösung gesehen macht die nächste frei; die Levelwahl zeigt, was noch offen ist.
 
 Die Regeln im Einzelnen und die Tests dazu stehen in der Spec [docs/specs/kistenschieber.md](docs/specs/kistenschieber.md).
@@ -50,7 +51,7 @@ src/
   data/games/         die 15 Lektionen, Texte, Stil „An der Kaje“, Ausblick auf die Level
   data/               Seitendaten, App, Symbol
   scripts/games/      das Spiel im Browser: Web Component, Bildschirme, Spielfeld, Eingabe, Speichern,
-                      Zeichnen, Wake Lock, Anmeldung des Service Workers
+                      Zeichnen, Ton, Wake Lock, Anmeldung des Service Workers
   integrations/       schreibt nach dem Build den Service Worker (dist/sw.js)
   styles/             tokens.css (Design-Tokens), game.css, global.css, sections.css
 scripts/              Gates nach dem Build (Bundle-, Seiten-, App-Gate), gates:ci, Auswertung wackeliger Tests
