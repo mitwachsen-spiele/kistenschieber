@@ -110,9 +110,9 @@ export const ARROW: readonly Flat[] = [
   [-0.26, 0.11],
 ];
 
-/** Pfeil auf Feld (r, c) in Richtung d, als Punkte in der Ebene */
-export function arrowPoly(r: number, c: number, [dr, dc]: Dir): Flat[] {
+/** Pfeil auf Feld (r, c) in Richtung d, als Punkte in der Ebene; scale vergrößert um die Feldmitte (bis 1,6 im Feld) */
+export function arrowPoly(r: number, c: number, [dr, dc]: Dir, scale = 1): Flat[] {
   const cx = c + 0.5;
   const cy = r + 0.5;
-  return ARROW.map(([u, v]) => [cx + u * dc - v * dr, cy + u * dr + v * dc]);
+  return ARROW.map(([u, v]) => [cx + scale * (u * dc - v * dr), cy + scale * (u * dr + v * dc)]);
 }

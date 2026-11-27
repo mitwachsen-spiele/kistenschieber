@@ -1,5 +1,5 @@
 // Spielbildschirm: verbindet den reinen Spielzustand (lib/games/sokoban/state.ts) mit dem statischen HTML aus
-// KistenschieberGame.astro. Tasten, Tippen, Wischen, Steuerkreuz, Knöpfe und Takt erzeugen neue Zustände; danach zeigt
+// KistenschieberGame.astro. Tasten, Tippen, Steuerkreuz, Knöpfe und Takt erzeugen neue Zustände; danach zeigt
 // der Bildschirm Zähler, Schild und Knöpfe nach dem Sieg und zeichnet das Feld. Nebenwirkungen eines Zustandswechsels
 // macht nur diese Datei: Bestwert und „mit Lösung gesehen“ speichern, Konfetti werfen (nicht bei weniger Bewegung, nie
 // nach vorgespielter Lösung) und wieder wegnehmen, Töne auslösen (welche, entscheidet ks-sound.ts).
@@ -29,7 +29,7 @@ import {
 import { KAJE_DECO } from '../../data/games/kaje';
 import { LESSONS, type Lesson } from '../../data/games/lessons';
 import { countText, fieldLabel, lessonName, nextText, signText } from '../../data/games/texts';
-import { type KeyAction, keepsKey, keyAction, padAngles, swipeDir, tapAt } from './ks-input';
+import { type KeyAction, keepsKey, keyAction, isTap, padAngles, tapAt } from './ks-input';
 import { nextHash } from './ks-router';
 import { type Cue, cues } from './ks-sound';
 import { type GameMoment, SAFE_EVENT, WIN_MS } from './pwa-moment';
@@ -72,6 +72,8 @@ export class GameScreen {
   private fx: Particle[] = [];
   private deco = decoFor(this.L, KAJE_DECO);
   private hits: Hits | null = null;
+  /** zuletzt gesetzte Höhe der Insel (--board-h), damit der Stil nur bei Änderung neu berechnet wird */
+  private boardH = '';
   private down: { readonly x: number; readonly y: number; readonly id: number } | null = null;
   /** Sieg mit Konfetti, bevor der nachgeladene Teil da war */
   private burstWanted = false;
@@ -109,7 +111,6 @@ export class GameScreen {
     );
     const on = (sel: string, fn: () => void) => need(root, sel).addEventListener('click', fn, { signal });
     on('[data-ks="undo"]', () => this.apply(undo(this.g)));
-    on('[data-ks="tip"]', () => this.apply(tip(this.g)));
     on('[data-ks="again"]', () => this.apply(again(this.g)));
     on('[data-ks="offer"]', () => this.skip());
     on('[data-ks="menu"]', () => this.openMenu());
@@ -134,7 +135,8 @@ export class GameScreen {
       a.addEventListener('click', () => this.dialog.close(), { signal });
     for (const b of this.pad.querySelectorAll<HTMLButtonElement>('button[data-pad]'))
       b.addEventListener('click', () => this.walk(b.dataset.pad as DirKey), { signal });
-    // Antippen und Wischen über Pointer-Events: kurzer Weg = Tippen, langer = ein Schritt in Wischrichtung
+    // Antippen über Pointer-Events: kurzer Weg = Tippen; ein Wisch tut nichts, kein preventDefault – der Finger darf die
+    // Seite scrollen (CSS touch-action: manipulation; beginnt der Browser zu scrollen, kommt pointercancel)
     const cv = this.canvas;
     const opts = { signal };
     cv.addEventListener('pointerdown', (e) => (this.down = { x: e.clientX, y: e.clientY, id: e.pointerId }), opts);
@@ -220,7 +222,7 @@ export class GameScreen {
     else if (g.auto) this.apply(stopAuto(g));
   }
 
-  /** Ein Schritt (Taste, Wischen, Steuerkreuz); beendet ein Vorspielen */
+  /** Ein Schritt (Taste, Steuerkreuz); beendet ein Vorspielen */
   private walk(d: DirKey) {
     this.apply(key(this.g, DIRS[d], performance.now()));
   }
@@ -229,8 +231,7 @@ export class GameScreen {
     const down = this.down;
     if (!down || down.id !== e.pointerId) return;
     this.down = null;
-    const d = swipeDir(e.clientX - down.x, e.clientY - down.y, screenDirs(this.host.camera()));
-    if (d) return this.walk(d);
+    if (!isTap(e.clientX - down.x, e.clientY - down.y)) return;
     // Erst zeichnen: Hat sich das Feld eben verschoben (Steuerkreuz nach dem ersten Antippen), passen die Treffer
     const now = performance.now();
     this.draw(now);
@@ -336,6 +337,7 @@ export class GameScreen {
     this.next.hidden = !g.won;
     this.again.hidden = !g.won;
     this.offer.hidden = g.won || !g.offered;
+    this.gin.classList.toggle('won', g.won);
     // Ein eben versteckter Knopf (Nochmal, Weiter) hatte den Fokus: zurück aufs Feld statt auf <body>
     // (Chromium nimmt ihm den Fokus schon beim Verstecken, daher vorher merken)
     if (had instanceof HTMLElement && had.hidden) this.focus();
@@ -360,9 +362,18 @@ export class GameScreen {
     const world = gameWorld(this.g, now, { deco: this.deco, fx: this.fx });
     this.hits = renderWorld(this.canvas, world, this.host.camera(), {
       maxS: 1.6,
-      maxH: Math.max(140, f.clientHeight - 6),
+      // Hochkant hält das Feld oben Platz für Schild und Knöpfe frei (padding-top, game.css)
+      maxH: Math.max(140, f.clientHeight - parseFloat(getComputedStyle(f).paddingTop) - 6),
       noRing: f.clientWidth < NO_RING_BELOW,
+      // Die Insel nutzt die ganze Breite des Felds (Abstände macht das Raster drumherum)
+      inset: 0,
       pad: 4,
     }).hits;
+    // Schild und Knöpfe sitzen hochkant direkt über der Insel
+    const h = this.canvas.style.height;
+    if (h !== this.boardH) {
+      this.boardH = h;
+      this.gin.style.setProperty('--board-h', h);
+    }
   }
 }

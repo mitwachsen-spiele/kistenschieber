@@ -84,7 +84,8 @@ describe('Töne beim Spielen', () => {
   it('Lektion 3: die erste Kiste auf ihrem Ziel rastet ein, ohne Melodie', () => {
     const p = player(LESSON3);
     p.keys('uLdlUU');
-    expect(p.g.msg).toBe('placed');
+    // Das Schild schweigt (die grüne Kiste zeigt es selbst, #11); zu hören ist das Einrasten
+    expect(p.g.msg).toBeNull();
     expect(p.sounds().filter((s) => s !== 'step')).toEqual(['push', 'push', 'push', 'lock']);
   });
 

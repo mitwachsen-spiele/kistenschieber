@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { makeCamera, screenDirs } from '../../lib/games/oblique/camera';
 import type { Picked } from '../../lib/games/oblique/geometry';
-import { DIRS, parseLevel } from '../../lib/games/sokoban/level';
+import { DIRS, nb, parseLevel } from '../../lib/games/sokoban/level';
 import { type Game, busy, key, newGame, showSolution, tick, tip } from '../../lib/games/sokoban/state';
-import { type KeyInfo, SWIPE_PX, keepsKey, keyAction, padAngles, swipeDir, tapAt } from './ks-input';
+import { LESSONS } from '../../data/games/lessons';
+import { type KeyInfo, TAP_PX, isTap, keepsKey, keyAction, padAngles, tapAt } from './ks-input';
 
 const k = (key: string, more: Partial<KeyInfo> = {}): KeyInfo => ({
   key,
@@ -78,29 +79,25 @@ describe('keepsKey', () => {
   });
 });
 
-describe('Wischen', () => {
-  const flat = screenDirs(makeCamera(0, 90));
+describe('Tippen oder Wisch', () => {
   it('bis 28 px ist es ein Tippen', () => {
-    expect(SWIPE_PX).toBe(28);
-    expect(swipeDir(28, 0, flat)).toBeNull();
-    expect(swipeDir(0, -20, flat)).toBeNull();
-    expect(swipeDir(25, 15, flat)).toBe('right'); // 29,2 px
+    expect(TAP_PX).toBe(28);
+    expect(isTap(0, 0)).toBe(true);
+    expect(isTap(28, 0)).toBe(true);
+    expect(isTap(0, -20)).toBe(true);
+    expect(isTap(-15, 15)).toBe(true);
   });
 
-  it('von oben gesehen: die Bildschirmrichtung ist die Gitterrichtung', () => {
-    expect(swipeDir(60, 0, flat)).toBe('right');
-    expect(swipeDir(-60, 5, flat)).toBe('left');
-    expect(swipeDir(3, -60, flat)).toBe('up');
-    expect(swipeDir(0, 60, flat)).toBe('down');
-  });
-
-  it('schräg: die Gitterrichtung, deren Bildschirmrichtung am besten passt', () => {
-    const dirs = screenDirs(makeCamera(45, 20));
-    for (const s of dirs) expect(swipeDir(s.x * 60, s.y * 60, dirs)).toBe(s.name);
-  });
-
-  it('ohne Richtungen kein Schritt', () => {
-    expect(swipeDir(60, 0, [])).toBeNull();
+  it('länger ist ein Wisch: kein Tippen und kein Schritt (Issue #12), in jede Richtung', () => {
+    expect(isTap(25, 15)).toBe(false); // 29,2 px
+    for (const [dx, dy] of [
+      [60, 0],
+      [-60, 5],
+      [3, -60],
+      [0, 60],
+      [-40, -40],
+    ] as const)
+      expect(isTap(dx, dy)).toBe(false);
   });
 });
 
@@ -181,6 +178,25 @@ describe('Antippen (tapAt)', () => {
     expect(tapAt(plain, null, 0)).toBe(plain);
   });
 
+  // Issue #14, Lektion 6 am Start: Der Tipp zeigt nur „runter“. Das Feld darüber (hoch = Kiste an die Wand) ist kein
+  // gezeigter Pfeil mehr, also darf ein Tippen dort auch nicht schieben, sondern die Figur läuft hin.
+  it('mit Tipp schiebt nur sein Pfeil: das verborgene Pfeilfeld ist ein normales Bodenfeld', () => {
+    const L6 = parseLevel(LESSONS[5]!.xsb);
+    const hinted = tip(newGame(L6));
+    expect(hinted.hint?.d).toBe('down');
+    const id = hinted.hint!.box;
+    const box = hinted.boxes[id]!;
+    const above = nb(L6, box, DIRS.up);
+    const g = settle(tapAt(hinted, floor(Math.floor(above / L6.W), above % L6.W), (t += 1)));
+    expect(g).toMatchObject({ pushes: 0, p: above, sel: null, hint: null });
+    expect(g.boxes[id]).toBe(box);
+    // das Pfeilfeld des Tipps schiebt weiter
+    const below = nb(L6, box, DIRS.down);
+    const pushed = settle(tapAt(hinted, floor(Math.floor(below / L6.W), below % L6.W), (t += 1)));
+    expect(pushed).toMatchObject({ pushes: 1 });
+    expect(pushed.boxes[id]).toBe(below);
+  });
+
   it('ein anderes Feld bei gewählter Kiste ist kein Pfeil: dorthin laufen', () => {
     const g = settle(tapAt(tapAt(newGame(L1), crate(0), 0), floor(5, 7), (t += 1)));
     expect(g).toMatchObject({ p: at(L1, 5, 7), moves: 2, sel: null });
@@ -193,7 +209,7 @@ describe('Antippen (tapAt)', () => {
     const auto = showSolution(newGame(L1), (t += 1));
     expect(auto.auto).toBe(true);
     const stopped = tapAt(auto, floor(5, 1), t);
-    expect(stopped).toMatchObject({ auto: false, q: [], msg: 'intro' });
+    expect(stopped).toMatchObject({ auto: false, q: [], msg: null });
     const won = settle(showSolution(newGame(L1), (t += 1)));
     expect(won.won).toBe(true);
     expect(tapAt(won, floor(5, 1), t)).toBe(won);

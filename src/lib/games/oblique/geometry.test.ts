@@ -72,6 +72,17 @@ describe('Pfeil', () => {
     const up = arrowPoly(2, 3, DIRS.up);
     expect(up[3]![1]).toBeCloseTo(2.2, 12);
   });
+  it('scale vergrößert um die Feldmitte und bleibt bei 1,5 im Feld', () => {
+    const big = arrowPoly(2, 3, DIRS.right, 1.5);
+    expect(big[3]![0]).toBeCloseTo(3.95, 12);
+    expect(big[3]![1]).toBeCloseTo(2.5, 12);
+    for (const [x, y] of big) {
+      expect(x).toBeGreaterThan(3);
+      expect(x).toBeLessThan(4);
+      expect(y).toBeGreaterThan(2);
+      expect(y).toBeLessThan(3);
+    }
+  });
 });
 
 describe('pick', () => {

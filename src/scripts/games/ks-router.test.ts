@@ -12,7 +12,7 @@ describe('route', () => {
     expect(route('#level', COUNT)).toEqual({
       screen: 'level',
       n: null,
-      title: 'Level wählen · Kistenschieber',
+      title: 'Lektion wählen · Kistenschieber',
       replace: null,
     });
     expect(route('#einstellungen', COUNT)).toEqual({
@@ -43,7 +43,7 @@ describe('route', () => {
       expect(route(hash, COUNT)).toEqual({
         screen: 'level',
         n: null,
-        title: 'Level wählen · Kistenschieber',
+        title: 'Lektion wählen · Kistenschieber',
         replace: '#level',
       });
     },

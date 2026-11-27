@@ -189,6 +189,7 @@ a.btn:hover {
 .screen.start {
   justify-items: center;
   text-align: center;
+  gap: 20px;
 }
 .starthead h1 {
   margin: 0;
@@ -197,41 +198,149 @@ a.btn:hover {
   font-size: clamp(2.2rem, 6vw, 3.6rem);
   line-height: 1.1;
 }
-/* Auf dem Himmel in --text statt --soft: Grau auf Hellblau hätte zu wenig Kontrast */
-.starthead p {
-  margin: 6px 0 0;
-  color: var(--text);
-}
 .startscene {
   width: 100%;
   max-width: 920px;
 }
+/* Zwei Teile, klar getrennt: links die spielbare Einführung als Karte mit Pixel-Rahmen und dem einzigen goldenen
+   Knopf, rechts die Level als Ankündigung: vertieft, gestrichelt, ohne Gold, ohne Hover, nichts zum Anklicken */
+.parts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+  gap: 18px;
+  width: min(760px, 100%);
+  text-align: start;
+}
+.part {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 14px 18px 16px;
+  min-width: 0;
+}
+/* Die Überschrift ist Flex wie jede in .screen; bricht die Pille um, steht sie mit 4 px Abstand darunter */
+.part h2,
+.part h3 {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 1.35rem;
+  line-height: 1.2;
+  gap: 4px 0;
+}
+.part p {
+  margin: 0;
+  text-wrap: balance;
+}
+.part .pill {
+  font-size: 0.875rem;
+}
+/* „jetzt spielbar“: hell mit dunklem Rand, anders als das gedämpfte „kommen bald“; geschafft grün (.pill.on) */
+.part .pill.now:not(.on) {
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.part .sub {
+  font-size: 0.9rem;
+  color: var(--soft);
+}
+.part.now {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: var(--ks-px);
+}
+.part.now [data-ks='status'] {
+  font-weight: 700;
+}
+.part.now.done [data-ks='status'] {
+  color: var(--ok);
+}
+.part.now .btn.primary {
+  justify-content: center;
+  margin-top: 6px;
+}
+/* Gedämpft bis in die Überschrift; dunkel tiefer als die Einführung, damit der Blick nicht zuerst hierher geht */
+.part.soon {
+  align-self: start;
+  background: var(--slot);
+  color: var(--soft);
+  outline: 3px dashed var(--frame);
+  outline-offset: -3px;
+}
+.part.soon .chapters b {
+  color: var(--soft);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .part.soon {
+    background: var(--sky-deep);
+  }
+}
+:root[data-theme='dark'] .part.soon {
+  background: var(--sky-deep);
+}
 .startbtns {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
   gap: 14px;
   width: min(420px, 100%);
 }
 .startbtns .btn {
   display: flex;
   justify-content: center;
-  justify-self: stretch;
 }
-/* Wie im Entwurf: der goldene Knopf klein und mittig über den breiten */
-.startbtns .btn.primary {
-  justify-self: center;
+/* Dunkel bleiben die beiden Nebenknöpfe auf dunkler Fläche, damit Gold der einzige starke Akzent ist */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .startbtns a.btn {
+    color: var(--text);
+    background: var(--card);
+    box-shadow:
+      var(--ks-px),
+      inset 0 0 0 2px var(--frame);
+  }
 }
-/* Handy quer: Szene links, Knöpfe rechts, damit „Spielen“ ohne Scrollen zu sehen ist */
+:root[data-theme='dark'] .startbtns a.btn {
+  color: var(--text);
+  background: var(--card);
+  box-shadow:
+    var(--ks-px),
+    inset 0 0 0 2px var(--frame);
+}
+/* Handy quer: links Titel, Szene und die beiden Nebenknöpfe, rechts von oben die Einführung samt Knopf und die
+   Level, damit alles ohne Scrollen auf den Bildschirm passt */
 @media (orientation: landscape) and (max-height: 500px) {
   .screen.start {
-    grid-template-columns: minmax(0, 1fr) minmax(200px, 300px);
-    align-items: center;
-    gap: 16px 24px;
-    padding-block: 12px 24px;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+    grid-template-areas:
+      'head parts'
+      'scene parts'
+      'btns parts';
+    grid-template-rows: auto auto 1fr;
+    align-items: start;
+    gap: 10px 24px;
+    padding-block: 12px;
   }
   .starthead {
-    grid-column: 1 / -1;
+    grid-area: head;
+  }
+  .starthead h1 {
+    font-size: 2rem;
+  }
+  .startscene {
+    grid-area: scene;
+  }
+  .parts {
+    grid-area: parts;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    width: 100%;
+  }
+  .part {
+    padding: 10px 14px 12px;
   }
   .startbtns {
+    grid-area: btns;
+    grid-template-columns: 1fr 1fr;
     width: 100%;
   }
 }
@@ -362,6 +471,9 @@ a.btn:hover {
   pointer-events: none;
 }
 /* Ausblick auf die Level: nur Ankündigung, nichts zum Anklicken */
+.part .chapters {
+  margin-top: 4px;
+}
 .chapters {
   margin: 0;
   padding: 0;
@@ -484,11 +596,13 @@ html:not(.touch) .pad {
 
 /* ---------- Spielfeld ----------
    Ein Container füllt den ganzen Bildschirm (100dvh, Safe Areas); sein Seitenverhältnis entscheidet, ob die Knöpfe
-   unter (hochkant) oder neben dem Feld (quer, ab 6/5) liegen. Niedrig (≤ 430 px) wird alles enger, schmal (≤ 380 px)
-   werden die Knöpfe schmaler. Schild und Zähler bleiben auch dunkel hell. Kein Ziehen der Seite, kein Markieren, kein
-   Doppeltipp-Zoom. Wie im Entwurf (CSS „Spiel“) */
-body.playing {
-  overflow: hidden;
+   unter (hochkant) oder neben dem Feld (quer, ab 6/5) liegen. Niedrig (≤ 600 px) wird alles enger, schmal (≤ 380 px)
+   werden die Knöpfe schmaler. Schild und Zähler bleiben auch dunkel hell. Kein Markieren, kein Doppeltipp-Zoom, kein
+   Ziehen zum Neuladen (overscroll-behavior am Wurzelelement: nur dessen Wert gilt für den Viewport, der von body wird
+   nicht weitergereicht). Die Seite darf aber scrollen (Issue #12, anders als im Entwurf): Wischen
+   ist kein Schritt, und ist der Bildschirm niedriger als die Untergrenze des Spielfelds (min-height), scrollt der Finger
+   auch auf dem Feld die Seite. Im Normalfall passt alles ohne Scrollen (CSS „Spiel“ im Entwurf) */
+html:has(body.playing) {
   overscroll-behavior: none;
 }
 .ks.playing {
@@ -499,10 +613,18 @@ body.playing {
   flex-direction: column;
   height: 100vh;
   height: 100dvh;
+  min-height: 20rem;
   max-width: none;
   padding: max(4px, env(safe-area-inset-top, 0px)) max(4px, env(safe-area-inset-right, 0px))
     max(4px, env(safe-area-inset-bottom, 0px)) max(4px, env(safe-area-inset-left, 0px));
   gap: 0;
+}
+/* Hochkant liegen Kopf, Platz für Meldungen (--msg-room), Insel und Steuerkreuz untereinander: Unter 35rem bliebe der
+   Insel zu wenig Höhe (Felder unter 24 px, zu klein für einen Kinderfinger), also scrollt dann lieber die Seite */
+@media (orientation: portrait) {
+  .screen.play {
+    min-height: 35rem;
+  }
 }
 .game {
   container-type: size;
@@ -514,6 +636,7 @@ body.playing {
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 /* Am Schreibtisch mit Rahmen und etwas Abstand; auf Handy und Tablet randlos */
 @media (min-width: 901px) and (pointer: fine) {
@@ -532,31 +655,35 @@ body.playing {
   height: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
-  grid-template-areas: 'bar' 'field' 'msg' 'ctl';
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'bar' 'field' 'ctl';
+  --msg-room: 8.5rem;
   gap: 10px;
-  padding: 10px 12px 12px;
+  padding: 8px 8px 12px;
 }
+/* Kopf: Titel und Zähler. Das Menü liegt unten bei „Zug zurück“, wo der Daumen ist (Issue #15) */
 .gbar {
   grid-area: bar;
   display: flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
-}
-.btn.gbtn {
-  min-height: 48px;
-  padding: 8px 18px;
+  min-height: 34px;
+  padding-inline: 4px;
 }
 .screen .gtitle {
-  display: block;
   flex: 1;
   min-width: 0;
   font-weight: 500;
   font-size: 1rem;
-  white-space: nowrap;
+  line-height: 1.2;
+  /* Auf dem Handy darf der Titel zweizeilig werden, statt mitten im Namen abzubrechen */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 .gcount {
   font-family: var(--font-pixel);
@@ -568,31 +695,48 @@ body.playing {
   box-shadow: var(--ks-px);
   white-space: nowrap;
 }
+/* Hochkant ist das Feld meist durch die Breite begrenzt. Oben bleibt immer Platz für Schild und Knöpfe nach dem Sieg
+   (--msg-room, ks-game.ts zieht ihn von der Höhe der Insel ab), damit eine Meldung nie auf der Insel liegt; im Rest
+   steht die Insel mittig, der übrige Himmel verteilt sich also über und unter ihr statt als Band über ihr. Quer steht
+   die Insel mittig im ganzen Feld */
 .field {
   grid-area: field;
   min-height: 0;
   display: grid;
   place-items: center;
   overflow: hidden;
+  padding-top: var(--msg-room);
 }
 .field canvas {
   display: block;
   max-width: 100%;
-  touch-action: none;
+  touch-action: manipulation;
   cursor: pointer;
   image-rendering: pixelated;
 }
+/* Schild und Knöpfe nach dem Sieg nehmen dem Feld keinen Platz und lassen es nie springen. Hochkant liegen sie im
+   Himmel über der Insel, unten bündig an ihr (--board-h ist die Höhe der Insel, ks-game.ts; die Insel steht mittig
+   unter --msg-room, ihre Oberkante also bei (100 % + --msg-room − --board-h) / 2); quer in der Spalte neben
+   dem Feld über „Zug zurück“. Leer sind sie unsichtbar; das Schild bleibt als Live-Region im Baum (aria-live sagt die
+   nächste Meldung an). Tippen geht durch die leere Fläche hindurch */
 .gmsg {
-  grid-area: msg;
-  display: grid;
-  gap: 10px;
-  justify-items: center;
+  grid-area: field;
+  align-self: start;
+  z-index: 1;
+  height: calc((100% + var(--msg-room) - var(--board-h, 0px)) / 2);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: safe flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 8px;
+  pointer-events: none;
 }
 .sign {
-  justify-self: center;
   margin: 0;
   min-height: 2.6em;
-  max-width: 60ch;
+  max-width: min(60ch, 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -603,6 +747,12 @@ body.playing {
   font-size: 1.02rem;
   font-weight: 700;
   padding: 6px 16px;
+}
+.sign:empty {
+  min-height: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
 }
 .sign.warn {
   background: var(--warn-soft);
@@ -615,6 +765,7 @@ body.playing {
   flex-wrap: wrap;
   gap: 12px;
   justify-content: center;
+  pointer-events: auto;
 }
 .after:not(:has(> :not([hidden]))) {
   display: none;
@@ -623,11 +774,17 @@ body.playing {
   grid-area: ctl;
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   gap: 14px;
 }
 .gin.left .gctl {
   flex-direction: row-reverse;
+}
+/* Mit Steuerkreuz stehen „Zug zurück“ (oben, am häufigsten) und „Menü“ (unten, in der Ecke) dicht beim Steuerkreuz
+   statt in der fernen Ecke; 24 px Abstand, damit ein Tipp auf „Zug zurück“ nicht auf einem Pfeil landet */
+html.touch .gctl {
+  justify-content: flex-end;
+  gap: 24px;
 }
 .gacts {
   display: grid;
@@ -637,52 +794,74 @@ body.playing {
   min-width: 112px;
   min-height: 56px;
 }
+/* Ohne Steuerkreuz (Tastatur, Maus) stehen „Zug zurück“ und „Menü“ nebeneinander */
+html:not(.touch) .gacts {
+  grid-auto-flow: column;
+}
+/* Quer: Das Feld bekommt die ganze Höhe, rechts (bzw. links, Hand) eine Spalte mit Titel und Zähler oben, darunter
+   Schild und Knöpfe, unten „Zug zurück“ und „Menü“ übereinander neben dem Steuerkreuz am Rand (Daumen). Die Spalte ist
+   so breit wie Knöpfe und Steuerkreuz, mindestens 15rem; Kopf und Schild tragen nicht zur Breite bei (contain), das
+   Feld ändert sich also nie, wenn eine Meldung kommt. Nach dem Sieg geht kein Schritt mehr: Das Steuerkreuz macht dann
+   in der Höhe Platz für „Weiter“ und „Nochmal“ */
 @container (min-aspect-ratio: 6/5) {
   .gin {
-    grid-template-columns: minmax(0, 1fr) auto;
+    --msg-room: 0px;
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, auto);
     grid-template-rows: auto minmax(0, 1fr) auto;
-    grid-template-areas: 'bar bar' 'field ctl' 'msg ctl';
+    grid-template-areas: 'field bar' 'field msg' 'field ctl';
+    padding: 8px;
+  }
+  .field {
+    place-items: center;
   }
   .gin.left {
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas: 'bar bar' 'ctl field' 'ctl msg';
+    grid-template-columns: minmax(15rem, auto) minmax(0, 1fr);
+    grid-template-areas: 'bar field' 'msg field' 'ctl field';
   }
-  .gctl,
-  .gin.left .gctl {
+  /* Ohne Steuerkreuz (Schreibtisch) ist die Spalte etwas breiter, damit der Titel Platz hat */
+  html:not(.touch) .gin {
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, auto);
+  }
+  html:not(.touch) .gin.left {
+    grid-template-columns: minmax(18rem, auto) minmax(0, 1fr);
+  }
+  /* Titel über dem Zähler, linksbündig über die ganze Spalte: bleibt in normaler Größe meist einzeilig */
+  .gbar {
+    contain: inline-size;
     flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding-inline: 0;
+  }
+  .screen .gtitle {
+    flex: none;
+    width: 100%;
+  }
+  .gmsg {
+    grid-area: msg;
+    height: auto;
+    contain: inline-size;
+    justify-content: flex-start;
+    align-items: stretch;
+    padding: 0;
+  }
+  .sign {
+    max-width: none;
+    font-size: 0.95rem;
+    line-height: 1.35;
+    padding: 6px 12px;
+  }
+  .gctl {
     justify-content: flex-end;
     align-items: center;
   }
-}
-@container (max-height: 430px) {
-  .gin {
-    gap: 6px;
-    padding: 6px 10px 8px;
-  }
-  .gacts {
-    grid-auto-flow: column;
-  }
-  .gacts .btn {
-    min-width: 0;
-    min-height: 48px;
-    padding: 6px 12px;
-  }
-  .pad {
-    grid-template-columns: repeat(3, 48px);
-    grid-template-rows: repeat(3, 48px);
-    gap: 4px;
+  /* unsichtbar und ohne Höhe, behält aber die Breite: Das Feld bleibt beim Sieg gleich groß */
+  .gin.won .pad {
+    visibility: hidden;
+    height: 0;
+    overflow: hidden;
   }
 }
-@container (max-width: 380px) {
-  .gacts .btn {
-    min-width: 92px;
-  }
-  .pad {
-    grid-template-columns: repeat(3, 54px);
-    grid-template-rows: repeat(3, 54px);
-  }
-}
-
 /* Steuerkreuz (nur mit Touch, siehe oben): Pfeile nach der Kamera gedreht (ks-game.ts), die Mitte ist eine Kiste.
    Gedrückt gold wie jede Aktion */
 .pad {
@@ -742,6 +921,42 @@ body.playing {
     transition: none;
   }
 }
+/* Wenig Höhe oder Breite: kleinere Knöpfe und Steuerkreuz (nach den Grundregeln, damit sie gelten). Niedrig heißt
+   bis 600 px: Hochkant auf kleinen Handys (375×553) bleibt so mehr Höhe für die Insel */
+@container (max-height: 600px) {
+  .gin {
+    gap: 6px;
+    padding: 6px 8px 8px;
+  }
+  .gacts {
+    gap: 8px;
+  }
+  .gacts .btn {
+    min-width: 0;
+    min-height: 48px;
+    padding: 6px 12px;
+  }
+  .pad {
+    grid-template-columns: repeat(3, 48px);
+    grid-template-rows: repeat(3, 48px);
+    gap: 4px;
+  }
+}
+/* Hochkant und niedrig: Schild (höchstens zwei Zeilen) und „Weiter“/„Nochmal“ passen auch in 7.5rem Himmel */
+@container (max-height: 600px) and (max-aspect-ratio: 6/5) {
+  .gin {
+    --msg-room: 7.5rem;
+  }
+}
+@container (max-width: 380px) {
+  .gacts .btn {
+    min-width: 92px;
+  }
+  .pad {
+    grid-template-columns: repeat(3, 54px);
+    grid-template-rows: repeat(3, 54px);
+  }
+}
 
 /* Menü im Spiel: modaler Dialog (ks-game.ts), Einträge volle Breite */
 .ks dialog.menu {
@@ -769,4 +984,30 @@ body.playing {
   justify-content: center;
   align-items: center;
   width: 100%;
+}
+/* Quer auf dem Handy: zwei Spalten, damit alle Einträge ohne Scrollen sichtbar sind */
+@media (orientation: landscape) and (max-height: 500px) {
+  .ks dialog.menu {
+    width: min(640px, 94vw);
+    max-height: 96vh;
+    padding: 12px 16px;
+  }
+  .ks dialog.menu[open] {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 10px;
+  }
+  .ks dialog.menu h2,
+  .ks dialog.menu .note {
+    grid-column: 1 / -1;
+  }
+  .ks dialog.menu h2 {
+    margin: 0;
+  }
+  .ks dialog.menu .btn {
+    min-height: 48px;
+    padding-block: 6px;
+  }
+  .ks dialog.menu .note {
+    margin: 0;
+  }
 }

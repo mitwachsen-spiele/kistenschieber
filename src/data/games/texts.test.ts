@@ -4,7 +4,10 @@ import {
   FINALE,
   LOCKED,
   badgeText,
+  INTRO,
   introPill,
+  introSub,
+  startPill,
   lockedGo,
   lockedWhy,
   thumbLabel,
@@ -51,8 +54,8 @@ describe('Sieg-Text', () => {
 });
 
 describe('Schild', () => {
-  it('Intro ist der Text der Lektion', () => {
-    for (const l of LESSONS) expect(signText('intro', l, 0)).toBe(l.intro);
+  it('ohne Meldung bleibt das Schild leer, auch zu Beginn jeder Lektion (keine Lektionshinweise)', () => {
+    for (const l of LESSONS) expect(signText(null, l, 0)).toBe('');
   });
 
   it('jeder Schlüssel hat einen Text, wörtlich aus dem Entwurf', () => {
@@ -60,7 +63,6 @@ describe('Schild', () => {
       'blocked',
       'stuck',
       'unsolvable',
-      'placed',
       'atStart',
       'restarted',
       'tipDead',
@@ -74,7 +76,8 @@ describe('Schild', () => {
     expect(SIGN.atStart).toBe('Ganz am Anfang, weiter zurück geht es nicht.');
     expect(SIGN.unsolvable).toBe('So geht es nicht mehr auf. Mit „Zug zurück“ ein paar Schritte zurück.');
     expect(SIGN.stuck).toBe('Diese Kiste kommt hier nicht mehr weg. Mit „Zug zurück“ geht es weiter.');
-    expect(SIGN.placed).toBe('Die Kiste steht.');
+    expect(Object.values(SIGN)).not.toContain('Die Kiste steht.');
+    expect(SIGN.tip).toBe('Tipp: Diese Kiste in Pfeilrichtung schieben.');
     expect(SIGN.shownWin).toBe('So geht es. Jetzt du? „Nochmal“ startet die Lektion neu.');
   });
 });
@@ -89,28 +92,41 @@ describe('Zähler, Titel, Knöpfe', () => {
   });
 
   it('Beschriftung des Spielfelds wörtlich', () => {
-    expect(fieldLabel(lesson(3))).toBe('Lektion 3: Zwei Kisten. Antippen, Wischen oder Pfeiltasten bewegen die Figur.');
+    expect(fieldLabel(lesson(3))).toBe('Lektion 3: Zwei Kisten. Antippen oder Pfeiltasten bewegen die Figur.');
   });
 
-  it('nach dem Sieg weiter zur nächsten Lektion, nach Lektion 15 „Zur Levelwahl“', () => {
+  it('nach dem Sieg weiter zur nächsten Lektion, nach Lektion 15 „Zu den Lektionen“', () => {
     expect(nextText(1)).toBe('Weiter zu Lektion 2');
     expect(nextText(14)).toBe('Weiter zu Lektion 15');
-    expect(nextText(15)).toBe('Zur Levelwahl');
+    expect(nextText(15)).toBe('Zu den Lektionen');
     expect([isFinale(14), isFinale(15)]).toEqual([false, true]);
     expect(GAME_BUTTONS).toMatchObject({ again: 'Nochmal', offer: 'Zu knifflig? Überspringen' });
+    // Tipp gibt es nur noch im Menü und mit H: unten bleibt nur „Zug zurück“ (Platz auf dem Handy)
+    expect(Object.keys(GAME_BUTTONS)).toEqual(['menu', 'again', 'offer', 'undo']);
   });
 });
 
 describe('Startbildschirm und Lektionskarten', () => {
-  it('Zeile unter dem Titel: Lektionen gezählt, nach der Einführung kommen die Level bald', () => {
-    expect(startStatus(0, 15, false)).toBe('Einführung: 0 von 15 Lektionen geschafft');
-    expect(startStatus(4, 15, false)).toBe('Einführung: 4 von 15 Lektionen geschafft');
-    expect(startStatus(12, 15, true)).toBe('Einführung geschafft. Die Level kommen bald.');
+  it('Teil „Einführung“: Titel, Unterzeile, Pille „jetzt spielbar“ bzw. Haken mit Text', () => {
+    expect(INTRO.title).toBe('Einführung');
+    expect(introSub(15)).toBe('Lernen in 15 Lektionen');
+    expect(startPill(false)).toBe('jetzt spielbar');
+    expect(startPill(true)).toBe('✓ geschafft');
   });
 
-  it('großer Knopf: „Spielen“ oder „Weiterspielen: Lektion N“', () => {
+  it('Fortschritt: Lektionen gezählt, geschafft (auch mit Lösung gesehen) als erledigt', () => {
+    expect(startStatus(0, 15, false)).toBe('0 von 15 Lektionen geschafft');
+    expect(startStatus(4, 15, false)).toBe('4 von 15 Lektionen geschafft');
+    expect(startStatus(12, 15, true)).toBe('Alle 15 Lektionen erledigt.');
+    expect(startStatus(14, 15, false, 1)).toBe('14 von 15 Lektionen geschafft, 1 übersprungen');
+    expect(startStatus(0, 15, false, 15)).toBe('0 von 15 Lektionen geschafft, 15 übersprungen');
+    expect(startStatus(12, 15, true, 0)).toBe('Alle 15 Lektionen erledigt.');
+  });
+
+  it('großer Knopf: „Spielen“, „Weiterspielen: Lektion N“, geschafft „Einführung wiederholen“', () => {
     expect(continueText(false, 1)).toBe('Spielen');
     expect(continueText(true, 2)).toBe('Weiterspielen: Lektion 2');
+    expect(continueText(true, 15, true)).toBe('Einführung wiederholen');
   });
 
   it('Bild der Lektion und Unterzeile der Karte', () => {
@@ -121,9 +137,10 @@ describe('Startbildschirm und Lektionskarten', () => {
 });
 
 describe('Levelwahl', () => {
-  it('Pille: 15 Lektionen, danach abgeschlossen', () => {
+  it('Pille: 15 Lektionen, geschafft derselbe Haken wie auf dem Startbildschirm', () => {
     expect(introPill(15, false)).toBe('15 Lektionen');
-    expect(introPill(15, true)).toBe('abgeschlossen');
+    expect(introPill(15, true)).toBe('✓ geschafft');
+    expect(introPill(15, true)).toBe(startPill(true));
   });
 
   it('Vorschau-Label', () => {
@@ -156,10 +173,10 @@ describe('Menü und Steuerkreuz', () => {
       'Tipp',
       'Lösung zeigen',
       'Lektion überspringen',
-      'Level wählen',
+      'Lektion wählen',
       'Einstellungen',
       'Startbildschirm',
-      'Überspringen und „Lösung zeigen“ machen die nächste Lektion frei. Zurückkommen geht jederzeit über „Level wählen“.',
+      'Überspringen und „Lösung zeigen“ machen die nächste Lektion frei. Zurückkommen geht jederzeit über „Lektion wählen“.',
     ]);
   });
 

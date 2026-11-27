@@ -92,7 +92,7 @@ export interface ScreenDir {
   readonly y: number;
 }
 
-/** Bildschirmrichtung je Gitterrichtung, für Wischen und die gedrehten Pfeile des Steuerkreuzes */
+/** Bildschirmrichtung je Gitterrichtung, für die gedrehten Pfeile des Steuerkreuzes */
 export function screenDirs(cam: Camera): ScreenDir[] {
   const [x0, y0] = project(cam, 0, 0, 0);
   return (Object.entries(DIRS) as [DirKey, Dir][]).map(([name, d]) => {
@@ -122,6 +122,8 @@ export interface FitOptions {
   readonly ringZ?: number;
   /** höchster Punkt der Szene */
   readonly zmax?: number;
+  /** Abstand zur verfügbaren Breite (CSS-px, beide Seiten zusammen); ohne Wert 24 */
+  readonly inset?: number;
 }
 
 export interface Fit {
@@ -168,7 +170,7 @@ export function fitScene(cam: Camera, a: Area, o: FitOptions = {}): Fit {
         y1 = Math.max(y1, y);
       }
   const pad = o.pad ?? 8;
-  const maxW = Math.max(200, (o.width || 600) - 24);
+  const maxW = Math.max(200, (o.width || 600) - (o.inset ?? 24));
   let s = Math.max(0.3, Math.min(o.maxS || 1.4, (maxW - 2 * pad) / (x1 - x0)));
   if (o.maxH) s = Math.max(0.15, Math.min(s, (o.maxH - 2 * pad) / (y1 - y0)));
   return {

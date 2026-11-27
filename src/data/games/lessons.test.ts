@@ -2,7 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { type Dir, cellType, nb, opposite, parseLevel, parseLurd } from '../../lib/games/sokoban/level';
 import { CHECK_CAP, findPath, solve, solveRun } from '../../lib/games/sokoban/solver';
 import { type ProgressKV, markShown, recordWin, stateOf } from '../../lib/games/sokoban/progress';
-import { AUTO_SLOWER, DURATION, busy, dirKey, newGame, showSolution, tick, tip } from '../../lib/games/sokoban/state';
+import { gameWorld } from '../../lib/games/sokoban/scene';
+import {
+  AUTO_SLOWER,
+  DURATION,
+  type Game,
+  busy,
+  dirKey,
+  newGame,
+  options,
+  showSolution,
+  step as play,
+  tick,
+  tip,
+} from '../../lib/games/sokoban/state';
 import { LESSONS } from './lessons';
 
 /** Ein Schritt nach den Sokoban-Regeln: laufen, schieben oder (null) geht nicht */
@@ -34,13 +47,11 @@ describe('Lektionen', () => {
     expect(LESSONS[0]).toMatchObject({
       title: 'Erster Schubs',
       idea: 'Laufen und schieben: eine Kiste, ein Ziel.',
-      intro: 'Schieb die Kiste auf das gelbe Feld.',
     });
-    expect(LESSONS[14]).toMatchObject({
-      title: 'Meisterstück',
-      intro: 'Das Meisterstück. Nimm dir Zeit, „Zug zurück“ hilft immer.',
-    });
-    for (const l of LESSONS) expect([l.title, l.idea, l.intro].every((t) => t.length > 0)).toBe(true);
+    expect(LESSONS[14]).toMatchObject({ title: 'Meisterstück' });
+    for (const l of LESSONS) expect([l.title, l.idea].every((t) => t.length > 0)).toBe(true);
+    // Keine Lektionshinweise auf dem Schild mehr (Issue #11): die Lektion trägt keinen Intro-Text
+    for (const l of LESSONS) expect(l).not.toHaveProperty('intro');
   });
 
   it.each(LESSONS)('Lektion $n: höchstens 10 breit und 9 hoch, je Kiste ein Ziel', (l) => {
@@ -177,5 +188,60 @@ describe('Lektionen im Spielzustand', () => {
     expect(kv.data.has(`best.e${l.n}`)).toBe(false);
     markShown(kv, l.n);
     expect(stateOf(kv, l.n)).toBe('shown');
+  });
+});
+
+/** Lektion n nach den Zügen lurd (ohne Animation) */
+function after(n: number, lurd = ''): Game {
+  const l = LESSONS[n - 1]!;
+  let g = newGame(parseLevel(l.xsb), { sol: l.sol });
+  for (const { dir } of parseLurd(lurd)) g = play(g, dir).game;
+  return g;
+}
+
+/** Pfeile nach dem Tipp; dazu, ob der gezeigte Schub die Stellung lösbar lässt */
+function tipArrows(g: Game) {
+  const t = tip(g);
+  const box = t.hint!.box;
+  const k = t.boxes[box]!;
+  const arrows = gameWorld(t, 0).arrows;
+  const solvable = arrows.map((a) => {
+    const boxes = t.boxes.slice();
+    boxes[box] = nb(t.L, k, a.d);
+    return solve(t.L, boxes, k, CHECK_CAP) !== null;
+  });
+  return { t, arrows, solvable, legal: options(t, box).map(dirKey) };
+}
+
+// Issue #14: Nach „Tipp“ zeigte die Kiste alle möglichen Pfeile, der Tipp war nur türkis. Auf dem Handy las sich das
+// wie „hoch oder runter“, obwohl hoch die Kiste an die Wand bringt (Lektion 6 am Start).
+describe('Tipp: genau ein Pfeil, ein erlaubter Schub, danach noch lösbar', () => {
+  it.each(LESSONS)('Lektion $n am Start', (l) => {
+    const { t, arrows, solvable, legal } = tipArrows(after(l.n));
+    expect(arrows).toHaveLength(1);
+    expect(arrows[0]).toMatchObject({ kind: 'hint' });
+    expect(dirKey(arrows[0]!.d)).toBe(t.hint!.d);
+    expect(legal).toContain(t.hint!.d);
+    expect(solvable).toEqual([true]);
+  });
+
+  it('Lektion 6 am Start (Fall des Nutzers): möglich wären hoch und runter, gezeigt wird nur runter', () => {
+    const { t, arrows, legal } = tipArrows(after(6));
+    expect(legal).toEqual(['up', 'down']);
+    expect(arrows.map((a) => dirKey(a.d))).toEqual(['down']);
+    expect(t.hint!.d).toBe('down');
+  });
+
+  it('Lektion 2 am Start: vier mögliche Richtungen, ein Pfeil', () => {
+    const { arrows, legal } = tipArrows(after(2));
+    expect(legal).toHaveLength(4);
+    expect(arrows.map((a) => [dirKey(a.d), a.kind])).toEqual([['right', 'hint']]);
+  });
+
+  it('Lektion 3 nach lUUrddrUU: nur links aufs Ziel, nicht rechts neben die andere Kiste (unlösbar)', () => {
+    const { arrows, solvable, legal } = tipArrows(after(3, 'lUUrddrUU'));
+    expect(legal).toContain('right');
+    expect(arrows.map((a) => [dirKey(a.d), a.kind])).toEqual([['left', 'hint']]);
+    expect(solvable).toEqual([true]);
   });
 });

@@ -9,6 +9,9 @@ const START = '#start canvas';
 const PREVIEW = '#einstellungen canvas';
 
 const screen = (page: Page, id: string) => page.locator(`ks-kistenschieber > section#${id}`);
+/** Teile des Startbildschirms: die spielbare Einführung und die Level, die erst kommen */
+const intro = (page: Page) => page.locator('#start .part.now');
+const soon = (page: Page) => page.locator('#start .part.soon');
 
 test.describe('Startbildschirm', () => {
   test('zeigt Titel, Knöpfe und die gezeichnete erste Lektion, ohne Fehler', async ({ page }) => {
@@ -16,10 +19,10 @@ test.describe('Startbildschirm', () => {
     await openGame(page);
     await expect(page.locator('h1')).toHaveCount(1);
     await expect(page.getByRole('heading', { level: 1, name: 'Kistenschieber' })).toBeVisible();
-    await expect(page.getByText('Einführung: 0 von 15 Lektionen geschafft')).toBeVisible();
     const start = screen(page, 'start');
-    await expect(start.getByRole('link', { name: 'Spielen', exact: true })).toHaveAttribute('href', '#lektion-1');
-    await expect(start.getByRole('link', { name: 'Level wählen' })).toHaveAttribute('href', '#level');
+    await expect(intro(page).getByText('0 von 15 Lektionen geschafft')).toBeVisible();
+    await expect(intro(page).getByRole('link', { name: 'Spielen', exact: true })).toHaveAttribute('href', '#lektion-1');
+    await expect(start.getByRole('link', { name: 'Lektion wählen' })).toHaveAttribute('href', '#level');
     await expect(start.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute('href', '#einstellungen');
     await expect(page.getByRole('img', { name: 'Lektion 1: Erster Schubs als Bild' })).toBeVisible();
     expect(await drawn(page, START)).toBe(true);
@@ -35,7 +38,7 @@ test.describe('Startbildschirm', () => {
     await openGame(page, { store: { 'best.e1': { moves: 9, pushes: 4 } } });
     const go = page.getByRole('link', { name: 'Weiterspielen: Lektion 2' });
     await expect(go).toHaveAttribute('href', '#lektion-2');
-    await expect(page.getByText('Einführung: 1 von 15 Lektionen geschafft')).toBeVisible();
+    await expect(intro(page).getByText('1 von 15 Lektionen geschafft')).toBeVisible();
     await expect(page.getByRole('img', { name: 'Lektion 2: Um die Ecke als Bild' })).toBeVisible();
     await page.getByRole('link', { name: 'Einstellungen' }).click();
     await expect(page.getByRole('link', { name: 'Zurück zum Spiel' })).toHaveAttribute('href', '#lektion-2');
@@ -46,13 +49,119 @@ test.describe('Startbildschirm', () => {
     await expect(page.getByRole('link', { name: 'Spielen', exact: true })).toHaveAttribute('href', '#lektion-1');
   });
 
-  test('nach der Einführung: „Einführung geschafft. Die Level kommen bald.“', async ({ page }) => {
-    const store: Record<string, unknown> = {};
+  test('zwei Teile: die Einführung spielbar mit dem goldenen Knopf, die Level „kommen bald“ ohne Link und ohne Gold', async ({
+    page,
+  }) => {
+    await openGame(page);
+    const start = screen(page, 'start');
+    await expect(start.getByRole('heading', { level: 2, name: 'Einführung jetzt spielbar' })).toBeVisible();
+    await expect(intro(page).getByText('Lernen in 15 Lektionen')).toBeVisible();
+    await expect(intro(page).locator('.btn.primary')).toHaveText('Spielen');
+    await expect(start.locator('.btn.primary')).toHaveCount(1);
+    await expect(start.getByRole('heading', { level: 2, name: 'Level kommen bald' })).toBeVisible();
+    await expect(soon(page).getByText('Noch nicht spielbar.')).toBeVisible();
+    await expect(soon(page).getByText('Kapitel 1: Am Kai und Kapitel 2: Im Speicher, Level 1 bis 24')).toBeVisible();
+    // Nur Ankündigung: nichts zum Anklicken, kein Zeiger, kein Gold, nicht im Tab-Weg
+    await expect(soon(page).locator('a, button, [tabindex]')).toHaveCount(0);
+    const look = await soon(page).evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { cursor: cs.cursor, bg: cs.backgroundColor, outline: cs.outlineStyle };
+    });
+    expect(look).toEqual({ cursor: 'auto', bg: 'rgb(226, 213, 186)', outline: 'dashed' });
+    await expect(intro(page)).not.toHaveClass(/\bdone\b/);
+  });
+
+  test('alles übersprungen ist nicht geschafft: kein Haken, der Knopf führt zum Nachholen', async ({ page }) => {
+    const store: Record<string, unknown> = { last: 'e15' };
     for (let n = 1; n <= 15; n++) store[`skip.e${n}`] = true;
     await openGame(page, { store });
-    await expect(page.getByText('Einführung geschafft. Die Level kommen bald.')).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Weiterspielen: Lektion 15' })).toHaveAttribute('href', '#lektion-15');
+    await expect(intro(page).locator('[data-ks="intro-state"]')).toHaveText('jetzt spielbar');
+    await expect(intro(page).getByText('0 von 15 Lektionen geschafft, 15 übersprungen')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Weiterspielen: Lektion 1' })).toHaveAttribute('href', '#lektion-1');
   });
+
+  test('eine übersprungen, der Rest gelöst: der Knopf führt zur übersprungenen statt zur gelösten letzten', async ({
+    page,
+  }) => {
+    const store: Record<string, unknown> = { last: 'e15', 'skip.e7': true };
+    for (let n = 1; n <= 15; n++) if (n !== 7) store[`best.e${n}`] = { moves: 9, pushes: 4 };
+    await openGame(page, { store });
+    await expect(intro(page)).not.toHaveClass(/\bdone\b/);
+    await expect(intro(page).getByText('14 von 15 Lektionen geschafft, 1 übersprungen')).toBeVisible();
+    await expect(intro(page).getByRole('link', { name: 'Weiterspielen: Lektion 7' })).toHaveAttribute(
+      'href',
+      '#lektion-7',
+    );
+  });
+
+  test('geschafft und beim Wiederholen: „Weiterspielen: Lektion N“ mit Haken', async ({ page }) => {
+    const store: Record<string, unknown> = { last: 'e6' };
+    for (let n = 1; n <= 15; n++) store[`best.e${n}`] = { moves: 9, pushes: 4 };
+    await openGame(page, { store });
+    await expect(intro(page).locator('[data-ks="intro-state"]')).toHaveText('✓ geschafft');
+    await expect(intro(page).getByRole('link', { name: 'Weiterspielen: Lektion 6' })).toHaveAttribute(
+      'href',
+      '#lektion-6',
+    );
+  });
+
+  test('die Pillen sehen verschieden aus: „jetzt spielbar“ hell mit dunklem Rand, „kommen bald“ gedämpft', async ({
+    page,
+  }) => {
+    await openGame(page);
+    const look = (sel: string) =>
+      page.locator(sel).evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return `${cs.backgroundColor} ${cs.color}`;
+      });
+    expect(await look('#start .part.now .pill')).not.toBe(await look('#start .part.soon .pill'));
+  });
+
+  test('Einführung geschafft (selbst gelöst oder mit Lösung gesehen): „✓ geschafft“, „Einführung wiederholen“', async ({
+    page,
+  }) => {
+    const store: Record<string, unknown> = { last: 'e15' };
+    for (let n = 1; n <= 14; n++) store[`best.e${n}`] = { moves: 9, pushes: 4 };
+    store['shown.e15'] = true;
+    await openGame(page, { store });
+    const start = screen(page, 'start');
+    await expect(start.getByRole('heading', { level: 2, name: 'Einführung ✓ geschafft' })).toBeVisible();
+    await expect(intro(page)).toHaveClass(/\bdone\b/);
+    await expect(intro(page).locator('[data-ks="intro-state"]')).toHaveClass(/\bon\b/);
+    await expect(intro(page).getByText('Alle 15 Lektionen erledigt.')).toBeVisible();
+    const again = intro(page).getByRole('link', { name: 'Einführung wiederholen' });
+    await expect(again).toHaveAttribute('href', '#lektion-1');
+    await expect(page.getByRole('img', { name: 'Lektion 1: Erster Schubs als Bild' })).toBeVisible();
+    await expect(start.getByRole('heading', { level: 2, name: 'Level kommen bald' })).toBeVisible();
+    await start.getByRole('link', { name: 'Lektion wählen' }).click();
+    await expect(page.locator('[data-ks="intro-pill"]')).toHaveText('✓ geschafft');
+  });
+
+  // Handy hoch und quer passt der ganze Start ohne Scrollen; kleinere Handys mindestens der große Knopf
+  for (const [width, height, whole] of [
+    [390, 844, true],
+    [844, 390, true],
+    [667, 375, true],
+    [375, 667, false],
+  ] as const)
+    test(`${width}×${height}: der große Knopf der Einführung ohne Scrollen${whole ? ', auch Level und Nebenknöpfe' : ''}, die Level getrennt`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height });
+      await openGame(page);
+      const go = await intro(page).locator('[data-ks="continue"]').boundingBox();
+      const a = await intro(page).boundingBox();
+      const b = await soon(page).boundingBox();
+      expect(go && go.y + go.height).toBeLessThanOrEqual(height);
+      // Die beiden Teile überlappen nicht
+      expect(a && b && (a.y + a.height <= b.y || a.x + a.width <= b.x)).toBe(true);
+      if (whole) {
+        const btns = await screen(page, 'start').locator('.startbtns').boundingBox();
+        expect(b && b.y + b.height).toBeLessThanOrEqual(height);
+        expect(btns && btns.y + btns.height).toBeLessThanOrEqual(height);
+        expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(height);
+      }
+    });
 });
 
 test.describe('Einstellungen', () => {
@@ -146,8 +255,8 @@ test.describe('Bildschirme per Hash', () => {
   test('#level-3 wird zu #level, der Titel folgt dem Bildschirm', async ({ page }) => {
     await openGame(page, { hash: '#level-3' });
     await expect(page).toHaveURL(/\/#level$/);
-    await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeVisible();
-    await expect(page).toHaveTitle('Level wählen · Kistenschieber');
+    await expect(page.getByRole('heading', { level: 2, name: 'Lektion wählen' })).toBeVisible();
+    await expect(page).toHaveTitle('Lektion wählen · Kistenschieber');
     await expect(screen(page, 'start')).toBeHidden();
   });
 
@@ -181,8 +290,8 @@ test.describe('Bildschirme per Hash', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'Einstellungen' })).toBeFocused();
     await page.getByRole('link', { name: 'Startbildschirm' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Kistenschieber' })).toBeFocused();
-    await screen(page, 'start').getByRole('link', { name: 'Level wählen' }).click();
-    await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeFocused();
+    await screen(page, 'start').getByRole('link', { name: 'Lektion wählen' }).click();
+    await expect(page.getByRole('heading', { level: 2, name: 'Lektion wählen' })).toBeFocused();
     await page.locator('#lektion-1').click();
     await expect(page.locator('#spiel canvas')).toBeFocused();
     await page.evaluate(() => (location.hash = '#level'));
@@ -268,18 +377,31 @@ test.describe('Levelwahl', () => {
     expect(frame).toContain('rgb(240, 165, 49)');
   });
 
-  test('alle erledigt: Pille „abgeschlossen“', async ({ page }) => {
+  test('nur übersprungen: Pille bleibt „15 Lektionen“, alle Karten frei', async ({ page }) => {
     const store: Record<string, unknown> = {};
     for (let n = 1; n <= 15; n++) store[`skip.e${n}`] = true;
     await openGame(page, { hash: '#level', store });
-    await expect(page.locator('[data-ks="intro-pill"]')).toHaveText('abgeschlossen');
-    await expect(page.locator('[data-ks="intro-pill"]')).toHaveClass(/\bon\b/);
+    await expect(page.locator('[data-ks="intro-pill"]')).toHaveText('15 Lektionen');
+    await expect(page.locator('[data-ks="intro-pill"]')).not.toHaveClass(/\bon\b/);
     await expect(page.locator('#level .card.locked')).toHaveCount(0);
   });
 
+  test('alle geschafft oder mit Lösung gesehen: Pille „✓ geschafft“', async ({ page }) => {
+    const store: Record<string, unknown> = {};
+    for (let n = 1; n <= 15; n++) store[n % 2 ? `best.e${n}` : `shown.e${n}`] = n % 2 ? { moves: 9, pushes: 4 } : true;
+    await openGame(page, { hash: '#level', store });
+    await expect(page.locator('[data-ks="intro-pill"]')).toHaveText('✓ geschafft');
+    await expect(page.locator('[data-ks="intro-pill"]')).toHaveClass(/\bon\b/);
+  });
   test('Ausblick: genau Kapitel 1 und 2, kein Link auf ein Level', async ({ page }) => {
     await openGame(page, { hash: '#level' });
     await expect(page.getByRole('heading', { level: 3, name: 'Level kommen bald' })).toBeVisible();
+    await expect(screen(page, 'level').getByText('Noch nicht spielbar.')).toBeVisible();
+    await expect(page.getByText('Spielbar ist bisher nur die Einführung, die Level kommen bald.')).toBeVisible();
+    // Dieselbe gestrichelte Karte wie auf dem Startbildschirm, ohne Link
+    const card = screen(page, 'level').locator('.part.soon');
+    await expect(card).toContainText('Noch nicht spielbar.');
+    expect(await card.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('dashed');
     const chapters = page.locator('#level .chapters li');
     await expect(chapters).toHaveText([
       'Kapitel 1: Am Kai Level 1 bis 12, 2 bis 3 Kisten',
@@ -303,7 +425,7 @@ test.describe('Levelwahl', () => {
       locked.getByText('Schaff zuerst Lektion 1: Erster Schubs oder überspring es; dann geht es weiter.'),
     ).toBeVisible();
     await expect(locked.getByRole('link', { name: 'Zu Lektion 1' })).toHaveAttribute('href', '#lektion-1');
-    await expect(locked.getByRole('link', { name: 'Level wählen' })).toHaveAttribute('href', '#level');
+    await expect(locked.getByRole('link', { name: 'Lektion wählen' })).toHaveAttribute('href', '#level');
     await expect(locked.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute('href', '#einstellungen');
     await expect(locked.getByText('Alles wird der Reihe nach frei.')).toBeVisible();
     await expect(page).toHaveTitle('Lektion 5 · Kistenschieber');
@@ -350,6 +472,10 @@ test.describe('ohne JavaScript', () => {
     await expect(page.locator('.badge:visible')).toHaveCount(0);
     await expect(screen(page, 'gesperrt')).toBeHidden();
     await expect(page.locator('#level .chapters li')).toHaveCount(2);
+    // Beide Teile des Starts stehen auch ohne JavaScript als Text da
+    await expect(page.getByRole('heading', { level: 2, name: 'Einführung jetzt spielbar' })).toBeVisible();
+    await expect(page.getByText('0 von 15 Lektionen geschafft')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Level kommen bald' })).toBeVisible();
     await expect(screen(page, 'einstellungen')).toBeHidden();
     await expect(page.getByRole('link', { name: 'Einstellungen' })).toBeHidden();
   });

@@ -3,17 +3,18 @@ import {
   type Best,
   type Flag,
   type ProgressKV,
-  allSettled,
   cardState,
   doneCount,
   firstPlayable,
-  introDone,
+  introComplete,
   lastRef,
   markOpened,
   markShown,
   markSkipped,
   recordWin,
   refOf,
+  skippedCount,
+  startPoint,
   started,
   stateOf,
   unlocked,
@@ -175,12 +176,63 @@ describe('Startbildschirm', () => {
     expect(started(kv, COUNT)).toBe(false);
   });
 
-  it('introDone: erst wenn die letzte Lektion nicht mehr offen ist', () => {
+  const solve = (kv: ProgressKV, ...ns: number[]) => ns.forEach((n) => kv.setBest(n, { moves: 9, pushes: 4 }));
+  const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
+
+  it('startPoint: solange eine Lektion offen ist, wie lastRef', () => {
     const kv = memoryKV();
-    for (let n = 1; n < COUNT; n++) kv.setBest(n, { moves: 9, pushes: 4 });
-    expect(introDone(kv, COUNT)).toBe(false);
-    kv.setFlag('skip', COUNT);
-    expect(introDone(kv, COUNT)).toBe(true);
+    expect(startPoint(kv, COUNT)).toEqual({ n: 1, repeat: false });
+    solve(kv, 1, 2);
+    kv.setLast('e2');
+    expect(startPoint(kv, COUNT)).toEqual({ n: 2, repeat: false });
+    kv.setFlag('skip', 3);
+    expect(startPoint(kv, COUNT)).toEqual({ n: lastRef(kv, COUNT), repeat: false });
+  });
+
+  it('startPoint: nichts mehr offen, aber übersprungen: zur ersten übersprungenen, nicht zur gelösten letzten', () => {
+    const kv = memoryKV();
+    solve(kv, ...range(1, 15).filter((n) => n !== 7));
+    kv.setFlag('skip', 7);
+    kv.setLast('e15');
+    expect(startPoint(kv, COUNT)).toEqual({ n: 7, repeat: false });
+    const all = memoryKV();
+    for (let n = 1; n <= COUNT; n++) all.setFlag('skip', n);
+    all.setLast('e15');
+    expect(startPoint(all, COUNT)).toEqual({ n: 1, repeat: false });
+  });
+
+  it('startPoint: mehrere übersprungen: immer die erste, auch wenn zuletzt eine spätere offen war', () => {
+    const kv = memoryKV();
+    solve(kv, ...range(1, 15).filter((n) => n !== 3 && n !== 9));
+    kv.setFlag('skip', 3);
+    kv.setFlag('skip', 9);
+    kv.setLast('e9');
+    expect(startPoint(kv, COUNT)).toEqual({ n: 3, repeat: false });
+    solve(kv, 3);
+    expect(startPoint(kv, COUNT)).toEqual({ n: 9, repeat: false });
+  });
+
+  it('startPoint: geschafft heißt wiederholen, außer eine Wiederholung läuft schon', () => {
+    const kv = memoryKV();
+    solve(kv, ...range(1, 14));
+    kv.setFlag('shown', 15);
+    expect(startPoint(kv, COUNT)).toEqual({ n: 1, repeat: true });
+    kv.setLast('e15');
+    expect(startPoint(kv, COUNT)).toEqual({ n: 1, repeat: true });
+    kv.setLast('e6');
+    expect(startPoint(kv, COUNT)).toEqual({ n: 6, repeat: false });
+    kv.setLast('e1');
+    expect(startPoint(kv, COUNT)).toEqual({ n: 1, repeat: false });
+  });
+
+  it('skippedCount: nur übersprungen und nicht nachgeholt', () => {
+    const kv = memoryKV();
+    kv.setFlag('skip', 2);
+    kv.setFlag('skip', 4);
+    kv.setFlag('skip', 5);
+    solve(kv, 4);
+    kv.setFlag('shown', 5);
+    expect(skippedCount(kv, COUNT)).toBe(1);
   });
 });
 
@@ -203,19 +255,22 @@ describe('Levelwahl', () => {
     expect(cardState(kv, 5)).toBe('locked');
   });
 
-  it('allSettled erst, wenn keine Lektion mehr offen ist', () => {
+  it('introComplete: erst wenn jede Lektion geschafft oder mit Lösung gesehen ist', () => {
     const kv = memoryKV();
-    expect(allSettled(kv, COUNT)).toBe(false);
-    for (let n = 1; n < COUNT; n++) kv.setFlag('skip', n);
-    expect(allSettled(kv, COUNT)).toBe(false);
-    kv.setBest(COUNT, { moves: 1, pushes: 1 });
-    expect(allSettled(kv, COUNT)).toBe(true);
+    expect(introComplete(kv, COUNT)).toBe(false);
+    for (let n = 1; n < COUNT; n++) kv.setBest(n, { moves: 9, pushes: 4 });
+    expect(introComplete(kv, COUNT)).toBe(false);
+    kv.setFlag('shown', COUNT);
+    expect(introComplete(kv, COUNT)).toBe(true);
   });
 
-  it('allSettled nicht schon mit der letzten Lektion allein (anders als introDone)', () => {
+  it('introComplete: Übersprungene zählen nicht, auch nicht die letzte allein', () => {
     const kv = memoryKV();
-    kv.setFlag('skip', COUNT);
-    expect(introDone(kv, COUNT)).toBe(true);
-    expect(allSettled(kv, COUNT)).toBe(false);
+    for (let n = 1; n <= COUNT; n++) kv.setFlag('skip', n);
+    expect(introComplete(kv, COUNT)).toBe(false);
+    for (let n = 2; n <= COUNT; n++) kv.setBest(n, { moves: 9, pushes: 4 });
+    expect(introComplete(kv, COUNT)).toBe(false);
+    kv.setBest(1, { moves: 9, pushes: 4 });
+    expect(introComplete(kv, COUNT)).toBe(true);
   });
 });

@@ -7,6 +7,8 @@ import { CONFETTI_LIFE } from '../src/lib/games/sokoban/confetti';
 import { SIGN } from '../src/data/games/texts';
 import { ARROW_FILL } from '../src/data/games/kaje';
 import {
+  apart,
+  box,
   colourCount,
   drawn,
   extras,
@@ -16,6 +18,7 @@ import {
   pixels,
   playLurd,
   render,
+  spot,
   stored,
   wakeLog,
   watchErrors,
@@ -29,6 +32,7 @@ const lesson = (n: number) => LESSONS[n - 1]!;
 const spiel = (page: Page) => page.locator('ks-kistenschieber > section#spiel');
 const sign = (page: Page) => page.locator('[data-ks="sign"]');
 const count = (page: Page) => page.locator('[data-ks="count"]');
+const dialog = (page: Page) => page.locator('#spiel dialog.menu');
 
 /** Lektionen 1 bis n−1 als übersprungen: Lektion n ist frei */
 function upTo(n: number): Record<string, unknown> {
@@ -44,7 +48,7 @@ async function press(page: Page, key: string) {
 }
 
 test.describe('Spielfeld', () => {
-  test('Lektion 1: Titel, Zähler, Feld, Schild mit dem Intro, Knöpfe; gemerkt als letzte; ohne Fehler', async ({
+  test('Lektion 1: Titel, Zähler, Feld, leeres Schild (Live-Region), Knöpfe; gemerkt als letzte; ohne Fehler', async ({
     page,
   }) => {
     const errors = watchErrors(page);
@@ -58,16 +62,19 @@ test.describe('Spielfeld', () => {
     await expect(s.getByRole('button', { name: 'Menü' })).toHaveAttribute('aria-haspopup', 'dialog');
     await expect(count(page)).toHaveText('0 Züge');
     const field = s.getByRole('img', {
-      name: 'Lektion 1: Erster Schubs. Antippen, Wischen oder Pfeiltasten bewegen die Figur.',
+      name: 'Lektion 1: Erster Schubs. Antippen oder Pfeiltasten bewegen die Figur.',
     });
     await expect(field).toBeVisible();
     await expect(field).toHaveAttribute('tabindex', '0');
     expect(await drawn(page, FIELD)).toBe(true);
-    await expect(sign(page)).toHaveText(lesson(1).intro);
+    // Keine Lektionshinweise: Das Schild ist zu Beginn leer, bleibt aber als Live-Region im Baum
+    await expect(sign(page)).toHaveText('');
     await expect(sign(page)).toHaveAttribute('aria-live', 'polite');
     await expect(sign(page)).toHaveClass('sign');
     await expect(s.getByRole('button', { name: 'Zug zurück' })).toBeVisible();
-    await expect(s.getByRole('button', { name: 'Tipp' })).toBeVisible();
+    // Unten nur „Zug zurück“ und „Menü“ (beim Daumen, Issue #15); Tipp gibt es im Menü und mit H (Platz auf dem Handy)
+    await expect(s.locator('.gacts .btn')).toHaveText(['Zug zurück', 'Menü']);
+    await expect(s.getByRole('button', { name: 'Tipp' })).toHaveCount(0);
     await expect(s.getByRole('link', { name: 'Weiter zu Lektion 2' })).toBeHidden();
     await expect(s.getByRole('button', { name: 'Nochmal' })).toBeHidden();
     await expect(s.getByRole('button', { name: 'Zu knifflig? Überspringen' })).toBeHidden();
@@ -95,7 +102,7 @@ test.describe('Spielfeld', () => {
     await expect(page).toHaveURL(/#lektion-2$/);
     await expect(spiel(page).getByRole('heading', { level: 2, name: 'Lektion 2: Um die Ecke' })).toBeVisible();
     await expect(count(page)).toHaveText('0 Züge');
-    await expect(sign(page)).toHaveText(lesson(2).intro);
+    await expect(sign(page)).toHaveText('');
     expect(await stored(page, 'last')).toBe('"e2"');
     expect(errors).toEqual([]);
   });
@@ -108,7 +115,7 @@ test.describe('Spielfeld', () => {
     await expect(sign(page)).toHaveText(/^Geschafft!/);
     await press(page, 'z');
     await expect(count(page)).toHaveText('8 Züge');
-    await expect(sign(page)).toHaveText(lesson(1).intro);
+    await expect(sign(page)).toHaveText('');
     await expect(spiel(page).getByRole('link', { name: 'Weiter zu Lektion 2' })).toBeHidden();
     await press(page, 'r');
     await expect(count(page)).toHaveText('0 Züge');
@@ -120,7 +127,7 @@ test.describe('Spielfeld', () => {
     await spiel(page).getByRole('button', { name: 'Nochmal' }).click();
     await render(page);
     await expect(count(page)).toHaveText('0 Züge');
-    await expect(sign(page)).toHaveText(lesson(1).intro);
+    await expect(sign(page)).toHaveText('');
     await expect(spiel(page).getByRole('button', { name: 'Nochmal' })).toBeHidden();
     await spiel(page).getByRole('button', { name: 'Zug zurück' }).click();
     await expect(sign(page)).toHaveText('Ganz am Anfang, weiter zurück geht es nicht.');
@@ -151,28 +158,62 @@ test.describe('Spielfeld', () => {
     expect(await stored(page, 'skip.e4')).toBe('true');
   });
 
-  test('Lektion 15: Sieg mit dem Zusatz zur Einführung und „Zur Levelwahl“', async ({ page }) => {
+  test('Lektion 15: Sieg mit dem Zusatz zur Einführung und „Zu den Lektionen“', async ({ page }) => {
     await openGame(page, { hash: '#lektion-15', store: upTo(15) });
     const l = lesson(15);
     await playLurd(page, l.sol);
     await expect(sign(page)).toHaveText(
       `Geschafft! ${l.moves} Züge, kürzer geht es nicht. Damit ist die Einführung geschafft.`,
     );
-    const next = spiel(page).getByRole('link', { name: 'Zur Levelwahl' });
+    const next = spiel(page).getByRole('link', { name: 'Zu den Lektionen' });
     await expect(next).toHaveAttribute('href', '#level');
     await next.click();
-    await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Lektion wählen' })).toBeVisible();
     await expect(page.locator('body')).not.toHaveClass(/\bplaying\b/);
   });
 
-  test('Lektion 3: „Die Kiste steht.“, die nächste Aktion bringt das Intro zurück', async ({ page }) => {
+  test('Lektion 3: eine Kiste auf dem Ziel braucht kein Schild', async ({ page }) => {
     await openGame(page, { hash: '#lektion-3', store: upTo(3) });
     await playLurd(page, 'uLdlUU');
-    await expect(sign(page)).toHaveText('Die Kiste steht.');
+    await expect(count(page)).toHaveText('6 Züge');
+    await expect(sign(page)).toHaveText('');
     await expect(sign(page)).toHaveClass('sign');
-    await press(page, 'ArrowDown');
-    await expect(sign(page)).toHaveText(lesson(3).intro);
   });
+
+  for (const [width, height] of [
+    [390, 844],
+    [375, 560],
+    [667, 375],
+  ] as const)
+    test(`${width}×${height}: Schild und Knöpfe nehmen dem Feld keinen Platz und liegen nie auf der Insel`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height });
+      await openGame(page, { hash: '#lektion-4', store: upTo(4) });
+      const SIGN_SEL = '#spiel [data-ks="sign"]';
+      const field = await box(page, '#spiel .field');
+      const board = await box(page, FIELD);
+      expect((await box(page, SIGN_SEL))?.height).toBe(0);
+      await expect(sign(page)).not.toHaveCSS('display', 'none');
+      // Kiste in die Ecke oben links (dort, wovor das Schild warnt), dann drei Rückschläge: das Angebot
+      await playLurd(page, 'ruLLdlU');
+      await expect(sign(page)).toHaveClass('sign warn');
+      const warn = await box(page, SIGN_SEL);
+      expect(warn!.height).toBeGreaterThan(20);
+      await press(page, 'r');
+      const offer = spiel(page).getByRole('button', { name: 'Zu knifflig? Überspringen' });
+      await expect(offer).toBeVisible();
+      for (const b of [warn, await box(page, SIGN_SEL), await offer.boundingBox()]) {
+        expect(apart(b, board)).toBe(true);
+        // hochkant im Himmel direkt über der Insel, quer daneben
+        if (height > width) expect(b!.y + b!.height).toBeLessThanOrEqual(board!.y + 1);
+        else expect(b!.x).toBeGreaterThanOrEqual(field!.x + field!.width);
+      }
+      expect(await box(page, '#spiel .field')).toEqual(field);
+      expect(await box(page, FIELD)).toEqual(board);
+      // Tippen geht durch die leere Fläche hindurch aufs Feld
+      await expect(page.locator('#spiel .gmsg')).toHaveCSS('pointer-events', 'none');
+    });
 
   test('#lektion-2 merkt sich „e2“, die gesperrte #lektion-9 nicht', async ({ page }) => {
     await openGame(page, { hash: '#lektion-2', store: { 'best.e1': { moves: 9, pushes: 4 } } });
@@ -359,8 +400,6 @@ test.describe('Spielfeld im ganzen Bildschirm', () => {
 });
 
 test.describe('Menü', () => {
-  const dialog = (page: Page) => page.locator('#spiel dialog.menu');
-
   test('M öffnet es: Titel, acht Einträge und die Notiz; Esc schließt; „Weiterspielen“ fokussiert das Feld', async ({
     page,
   }) => {
@@ -378,16 +417,16 @@ test.describe('Menü', () => {
       'Tipp',
       'Lösung zeigen',
       'Lektion überspringen',
-      'Level wählen',
+      'Lektion wählen',
       'Einstellungen',
       'Startbildschirm',
     ]);
     await expect(d.getByRole('link')).toHaveCount(3);
-    await expect(d.getByRole('link', { name: 'Level wählen' })).toHaveAttribute('href', '#level');
+    await expect(d.getByRole('link', { name: 'Lektion wählen' })).toHaveAttribute('href', '#level');
     await expect(d.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute('href', '#einstellungen');
     await expect(d.getByRole('link', { name: 'Startbildschirm' })).toHaveAttribute('href', '#start');
     await expect(d.locator('p.note')).toHaveText(
-      'Überspringen und „Lösung zeigen“ machen die nächste Lektion frei. Zurückkommen geht jederzeit über „Level wählen“.',
+      'Überspringen und „Lösung zeigen“ machen die nächste Lektion frei. Zurückkommen geht jederzeit über „Lektion wählen“.',
     );
     await expect(d.getByRole('button', { name: 'Weiterspielen' })).toHaveClass(/\bprimary\b/);
     await page.keyboard.press('Escape');
@@ -433,7 +472,7 @@ test.describe('Menü', () => {
     await expect(dialog(page)).toBeVisible();
   });
 
-  test('ein Bildschirmwechsel schließt das Menü; „Level wählen“ führt zur Levelwahl', async ({ page }) => {
+  test('ein Bildschirmwechsel schließt das Menü; „Lektion wählen“ führt zur Levelwahl', async ({ page }) => {
     await openGame(page, { hash: '#lektion-1' });
     await page.keyboard.press('m');
     await expect(dialog(page)).toBeVisible();
@@ -442,7 +481,7 @@ test.describe('Menü', () => {
     await expect(dialog(page)).toBeHidden();
     await page.evaluate(() => (location.hash = '#lektion-1'));
     await page.keyboard.press('m');
-    await dialog(page).getByRole('link', { name: 'Level wählen' }).click();
+    await dialog(page).getByRole('link', { name: 'Lektion wählen' }).click();
     await expect(page).toHaveURL(/#level$/);
     await expect(dialog(page)).toBeHidden();
   });
@@ -461,16 +500,43 @@ test.describe('Menü', () => {
 test.describe('Tipp und Lösung', () => {
   const turquoise = [0x2e, 0xc4, 0xb6] as const;
 
-  test('Tipp am Start von Lektion 2: Kiste gewählt, türkiser Pfeil, Tipp-Text', async ({ page }) => {
+  test('Tipp (Menü) am Start von Lektion 2: Kiste gewählt, türkiser Pfeil, Tipp-Text', async ({ page }) => {
     await openGame(page, { hash: '#lektion-2', store: { 'skip.e1': true } });
     expect(await colourCount(page, FIELD, turquoise)).toBe(0);
-    await spiel(page).getByRole('button', { name: 'Tipp' }).click();
+    await page.keyboard.press('m');
+    await dialog(page).getByRole('button', { name: 'Tipp' }).click();
+    await expect(dialog(page)).toBeHidden();
     await render(page);
     await expect(sign(page)).toHaveText(SIGN.tip);
     // türkiser Pfeil (Tipp) und goldener Rand der gewählten Kiste
     expect(await colourCount(page, FIELD, turquoise)).toBeGreaterThan(50);
     expect(await colourCount(page, FIELD, [0xf0, 0xa5, 0x31])).toBeGreaterThan(20);
     expect(ARROW_FILL.hint).toBe('#2ec4b6');
+  });
+
+  test('Tipp am Start von Lektion 6 (Issue #14): nur der türkise Pfeil, kein grauer an die Wand', async ({ page }) => {
+    await openGame(page, { hash: '#lektion-6', store: upTo(6) });
+    const grey = [0xa3, 0xaa, 0xb3] as const;
+    expect(ARROW_FILL.dead).toBe('#a3aab3');
+    const before = await colourCount(page, FIELD, grey);
+    // Von Hand gewählt: hoch (grau, an die Wand) und runter (gold)
+    const box = await spot(page, { crate: 0 });
+    await page.mouse.click(box.x, box.y);
+    await render(page);
+    expect(await colourCount(page, FIELD, grey)).toBeGreaterThan(before + 50);
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('h');
+    await render(page);
+    await expect(sign(page)).toHaveText(SIGN.tip);
+    expect(await colourCount(page, FIELD, turquoise)).toBeGreaterThan(50);
+    const withTip = await colourCount(page, FIELD, grey);
+    // Esc nimmt den Tipp weg, das Schild bleibt (gleiche Größe des Felds): Grau ändert sich kaum, es gab keinen grauen
+    // Pfeil (der brächte über 50 Pixel; der große Tipp-Pfeil verdeckt nur einzelne graue Pixel des Felds)
+    await page.keyboard.press('Escape');
+    await render(page);
+    await expect(sign(page)).toHaveText(SIGN.tip);
+    expect(await colourCount(page, FIELD, turquoise)).toBe(0);
+    expect(Math.abs((await colourCount(page, FIELD, grey)) - withTip)).toBeLessThan(10);
   });
 
   test('Tipp aus der Sackgasse (H): „Von hier aus geht es nicht mehr. …“ als Warnung', async ({ page }) => {
@@ -503,11 +569,11 @@ test.describe('Tipp und Lösung', () => {
     await spiel(page).getByRole('button', { name: 'Lösung zeigen' }).click();
     await render(page, 4);
     await page.keyboard.press('x');
-    await expect(sign(page)).toHaveText(lesson(2).intro);
+    await expect(sign(page)).toHaveText('');
     const moves = await count(page).textContent();
     await render(page, 40);
     await expect(count(page)).toHaveText(moves!);
-    await expect(sign(page)).toHaveText(lesson(2).intro);
+    await expect(sign(page)).toHaveText('');
   });
 
   test('das Menü zu öffnen beendet das Vorspielen', async ({ page }) => {
@@ -517,7 +583,7 @@ test.describe('Tipp und Lösung', () => {
     await render(page, 4);
     await page.keyboard.press('m');
     await expect(page.locator('#spiel dialog.menu')).toBeVisible();
-    await expect(sign(page)).toHaveText(lesson(2).intro);
+    await expect(sign(page)).toHaveText('');
     await page.keyboard.press('Escape');
     await expect(page.locator('#spiel dialog.menu')).toBeHidden();
     const moves = await count(page).textContent();
@@ -556,7 +622,7 @@ test.describe('Lektion überspringen', () => {
 });
 
 test.describe('nachgeladen und Wake Lock', () => {
-  test('ohne den nachgeladenen Teil geht das Menü trotzdem: Lösung zeigen und Level wählen', async ({ page }) => {
+  test('ohne den nachgeladenen Teil geht das Menü trotzdem: Lösung zeigen und Lektion wählen', async ({ page }) => {
     await page.route(/\/ks-menu\.[^/]*\.js$/, (route) => route.abort());
     await openGame(page, { hash: '#lektion-2', store: { 'skip.e1': true } });
     await page.keyboard.press('m');
@@ -568,9 +634,9 @@ test.describe('nachgeladen und Wake Lock', () => {
     await expect(sign(page)).toHaveText(SIGN.showing);
     await page.keyboard.press('Escape');
     await expect(d).toBeVisible();
-    await d.getByRole('link', { name: 'Level wählen' }).click();
+    await d.getByRole('link', { name: 'Lektion wählen' }).click();
     await expect(page).toHaveURL(/#level$/);
-    await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Lektion wählen' })).toBeVisible();
     await expect(spiel(page)).not.toHaveClass(/\bextras\b/);
   });
 
@@ -581,7 +647,7 @@ test.describe('nachgeladen und Wake Lock', () => {
     });
     await openGame(page);
     await page.evaluate(() => (location.hash = '#level'));
-    await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Lektion wählen' })).toBeVisible();
     expect(asked).toEqual([]);
     await page.evaluate(() => (location.hash = '#lektion-1'));
     await extras(page);
