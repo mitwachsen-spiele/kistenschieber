@@ -532,8 +532,9 @@ body.playing {
   height: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
-  grid-template-areas: 'bar' 'field' 'msg' 'ctl';
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'bar' 'field' 'ctl';
+  --msg-room: 8.5rem;
   gap: 10px;
   padding: 10px 12px 12px;
 }
@@ -572,14 +573,16 @@ body.playing {
   box-shadow: var(--ks-px);
   white-space: nowrap;
 }
-/* Hochkant ist das Feld meist durch die Breite begrenzt: Die Insel sitzt unten, direkt über Schild und Knöpfen, der
-   freie Platz darüber ist Himmel (statt Lücken über und unter dem Feld). Quer steht sie mittig */
+/* Hochkant ist das Feld meist durch die Breite begrenzt: Die Insel sitzt unten, direkt über den Knöpfen, der freie
+   Platz darüber ist Himmel. Oben bleibt immer Platz für Schild und Knöpfe nach dem Sieg (--msg-room, ks-game.ts zieht
+   ihn von der Höhe der Insel ab), damit eine Meldung nie auf der Insel liegt. Quer steht die Insel mittig */
 .field {
   grid-area: field;
   min-height: 0;
   display: grid;
   place-items: end center;
   overflow: hidden;
+  padding-top: var(--msg-room);
 }
 .field canvas {
   display: block;
@@ -588,17 +591,28 @@ body.playing {
   cursor: pointer;
   image-rendering: pixelated;
 }
+/* Schild und Knöpfe nach dem Sieg nehmen dem Feld keinen Platz und lassen es nie springen. Hochkant liegen sie im
+   Himmel über der Insel, unten bündig an ihr (--board-h ist die Höhe der Insel, ks-game.ts); quer in der Spalte neben
+   dem Feld über „Zug zurück“. Leer sind sie unsichtbar; das Schild bleibt als Live-Region im Baum (aria-live sagt die
+   nächste Meldung an). Tippen geht durch die leere Fläche hindurch */
 .gmsg {
-  grid-area: msg;
-  display: grid;
-  gap: 10px;
-  justify-items: center;
+  grid-area: field;
+  align-self: start;
+  z-index: 1;
+  height: calc(100% - var(--board-h, 0px));
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: safe flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 8px;
+  pointer-events: none;
 }
 .sign {
-  justify-self: center;
   margin: 0;
   min-height: 2.6em;
-  max-width: 60ch;
+  max-width: min(60ch, 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -609,6 +623,12 @@ body.playing {
   font-size: 1.02rem;
   font-weight: 700;
   padding: 6px 16px;
+}
+.sign:empty {
+  min-height: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
 }
 .sign.warn {
   background: var(--warn-soft);
@@ -621,6 +641,7 @@ body.playing {
   flex-wrap: wrap;
   gap: 12px;
   justify-content: center;
+  pointer-events: auto;
 }
 .after:not(:has(> :not([hidden]))) {
   display: none;
@@ -643,55 +664,49 @@ body.playing {
   min-width: 112px;
   min-height: 56px;
 }
+/* Quer: rechts (bzw. links) eine Spalte mit Schild und Knöpfen oben, „Zug zurück“ und Steuerkreuz unten nebeneinander.
+   Die Spalte ist so breit wie Steuerkreuz und „Zug zurück“, mindestens 15rem; das Schild trägt nicht zur Breite bei
+   (contain), das Feld ändert sich also nie, wenn eine Meldung kommt. Nach dem Sieg geht kein Schritt mehr: Das
+   Steuerkreuz macht dann in der Höhe Platz für „Weiter“ und „Nochmal“ */
 @container (min-aspect-ratio: 6/5) {
   .gin {
-    grid-template-columns: minmax(0, 1fr) auto;
+    --msg-room: 0px;
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, auto);
     grid-template-rows: auto minmax(0, 1fr) auto;
-    grid-template-areas: 'bar bar' 'field ctl' 'msg ctl';
+    grid-template-areas: 'bar bar' 'field msg' 'field ctl';
   }
   .field {
     place-items: center;
   }
   .gin.left {
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas: 'bar bar' 'ctl field' 'ctl msg';
+    grid-template-columns: minmax(15rem, auto) minmax(0, 1fr);
+    grid-template-areas: 'bar bar' 'msg field' 'ctl field';
   }
-  .gctl,
-  .gin.left .gctl {
-    flex-direction: column;
+  .gmsg {
+    grid-area: msg;
+    height: auto;
+    contain: inline-size;
+    justify-content: flex-start;
+    align-items: stretch;
+    padding: 0;
+  }
+  .sign {
+    max-width: none;
+    font-size: 0.95rem;
+    line-height: 1.35;
+    padding: 6px 12px;
+  }
+  .gctl {
     justify-content: flex-end;
     align-items: center;
   }
-}
-@container (max-height: 430px) {
-  .gin {
-    gap: 6px;
-    padding: 6px 10px 8px;
-  }
-  .gacts {
-    grid-auto-flow: column;
-  }
-  .gacts .btn {
-    min-width: 0;
-    min-height: 48px;
-    padding: 6px 12px;
-  }
-  .pad {
-    grid-template-columns: repeat(3, 48px);
-    grid-template-rows: repeat(3, 48px);
-    gap: 4px;
+  /* unsichtbar und ohne Höhe, behält aber die Breite: Das Feld bleibt beim Sieg gleich groß */
+  .gin.won .pad {
+    visibility: hidden;
+    height: 0;
+    overflow: hidden;
   }
 }
-@container (max-width: 380px) {
-  .gacts .btn {
-    min-width: 92px;
-  }
-  .pad {
-    grid-template-columns: repeat(3, 54px);
-    grid-template-rows: repeat(3, 54px);
-  }
-}
-
 /* Steuerkreuz (nur mit Touch, siehe oben): Pfeile nach der Kamera gedreht (ks-game.ts), die Mitte ist eine Kiste.
    Gedrückt gold wie jede Aktion */
 .pad {
@@ -749,6 +764,35 @@ body.playing {
 @media (prefers-reduced-motion: reduce) {
   .pad {
     transition: none;
+  }
+}
+/* Wenig Höhe oder Breite: kleinere Knöpfe und Steuerkreuz (nach den Grundregeln, damit sie gelten) */
+@container (max-height: 430px) {
+  .gin {
+    gap: 6px;
+    padding: 6px 10px 8px;
+  }
+  .gacts {
+    grid-auto-flow: column;
+  }
+  .gacts .btn {
+    min-width: 0;
+    min-height: 48px;
+    padding: 6px 12px;
+  }
+  .pad {
+    grid-template-columns: repeat(3, 48px);
+    grid-template-rows: repeat(3, 48px);
+    gap: 4px;
+  }
+}
+@container (max-width: 380px) {
+  .gacts .btn {
+    min-width: 92px;
+  }
+  .pad {
+    grid-template-columns: repeat(3, 54px);
+    grid-template-rows: repeat(3, 54px);
   }
 }
 

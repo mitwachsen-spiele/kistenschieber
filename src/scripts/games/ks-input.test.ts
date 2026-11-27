@@ -213,7 +213,7 @@ describe('Antippen (tapAt)', () => {
     const auto = showSolution(newGame(L1), (t += 1));
     expect(auto.auto).toBe(true);
     const stopped = tapAt(auto, floor(5, 1), t);
-    expect(stopped).toMatchObject({ auto: false, q: [], msg: 'intro' });
+    expect(stopped).toMatchObject({ auto: false, q: [], msg: null });
     const won = settle(showSolution(newGame(L1), (t += 1)));
     expect(won.won).toBe(true);
     expect(tapAt(won, floor(5, 1), t)).toBe(won);

@@ -1,7 +1,7 @@
 // Spielzustand einer Lektion als reiner Reducer: Schritte und Schübe, Eingabepuffer, Zug zurück, Neustart, Sieg,
 // Prüfung nach jedem Schub, Rückschläge, Tipp und „Lösung zeigen“. Keine Funktion verändert ihre Eingabe, jede gibt
 // einen neuen Zustand zurück. Die Zeit kommt als Parameter (now in ms), Meldungen sind Schlüssel (Texte in
-// data/games/texts.ts). Speichern (Bestwert, „mit Lösung gesehen“) und Konfetti-Teilchen macht der Aufrufer.
+// data/games/texts.ts); null heißt: nichts zu sagen, das Schild ist leer. Speichern (Bestwert, „mit Lösung gesehen“) und Konfetti-Teilchen macht der Aufrufer.
 import { D4, type Dir, type DirKey, type Facing, type Level, dirName, nb, opposite, parseLurd } from './level';
 import { CHECK_CAP, SOLVE_CAP, findPath, reach, solve } from './solver';
 
@@ -17,11 +17,9 @@ export const DURATION = { push: 170, walk: 120, bump: 160, blocked: 160 } as con
 export const AUTO_SLOWER = 1.3;
 
 export type MsgKey =
-  | 'intro'
   | 'blocked'
   | 'stuck'
   | 'unsolvable'
-  | 'placed'
   | 'atStart'
   | 'restarted'
   | 'tipDead'
@@ -37,7 +35,8 @@ export type MsgKind = '' | 'warn' | 'win';
 
 const WARN: ReadonlySet<MsgKey> = new Set<MsgKey>(['stuck', 'unsolvable', 'tipDead']);
 
-export function msgKind(key: MsgKey): MsgKind {
+export function msgKind(key: MsgKey | null): MsgKind {
+  if (key === null) return '';
   if (WARN.has(key)) return 'warn';
   return key === 'win' || key === 'shownWin' ? 'win' : '';
 }
@@ -101,7 +100,8 @@ export interface Game extends Pose {
   readonly setbacks: number;
   /** „Zu knifflig? Überspringen“ wird angeboten */
   readonly offered: boolean;
-  readonly msg: MsgKey;
+  /** Meldung auf dem Schild; null, solange es nichts zu sagen gibt */
+  readonly msg: MsgKey | null;
 }
 
 const startPose = (L: Level): Pose => ({ p: L.player, boxes: L.boxes, dir: 'j', moves: 0, pushes: 0, won: false });
@@ -125,7 +125,7 @@ export function newGame(L: Level, opts: { readonly sol?: string; readonly reduce
     solutionShown: false,
     setbacks: 0,
     offered: false,
-    msg: 'intro',
+    msg: null,
   };
 }
 
@@ -200,7 +200,7 @@ function setback(g: Game): Game {
   return { ...g, setbacks, offered: g.offered || (setbacks >= SETBACKS_FOR_OFFER && !g.won) };
 }
 
-const stopped = (g: Game): Game => (g.auto ? { ...g, auto: false, q: [], msg: 'intro' } : g);
+const stopped = (g: Game): Game => (g.auto ? { ...g, auto: false, q: [], msg: null } : g);
 
 /** Nächsten vorgemerkten Schritt starten; bump und blocked leeren den Puffer */
 function startNext(g: Game, now: number): Game {
@@ -218,15 +218,14 @@ function win(g: Game): Game {
   return { ...g, won: true, q: [], shownWin, auto: false, confetti: !shownWin, msg: shownWin ? 'shownWin' : 'win' };
 }
 
-/** Nach jedem Schub: Sieg vor festsitzender Kiste vor „geht nicht mehr auf“ (Löser bis CHECK_CAP) */
+/** Nach jedem Schub: Sieg vor festsitzender Kiste vor „geht nicht mehr auf“ (Löser bis CHECK_CAP); sonst still */
 function afterPush(g: Game, id: number, k: number): Game {
   const L = g.L;
   if (g.boxes.every((b) => L.goals.has(b))) return win(g);
   if (g.auto) return g;
   if (!L.goals.has(k) && !L.live.has(k))
     return setback({ ...g, stuck: g.stuck.includes(id) ? g.stuck : [...g.stuck, id], q: [], msg: 'stuck' });
-  if (solve(L, g.boxes, g.p, CHECK_CAP) === null) return setback({ ...g, q: [], msg: 'unsolvable' });
-  return L.goals.has(k) ? { ...g, msg: 'placed' } : g;
+  return solve(L, g.boxes, g.p, CHECK_CAP) === null ? setback({ ...g, q: [], msg: 'unsolvable' }) : g;
 }
 
 /** Eine Aktion (ein Schnappschuss): ein Tastendruck, ein ganzer Laufweg samt Schub oder die gespeicherte Lösung */
@@ -235,9 +234,9 @@ export function act(g: Game, steps: readonly Dir[], now: number): Game {
   let s: Game = { ...g, sel: null, hint: null };
   if (!steps.length) return s;
   s = { ...withSnapshot(s), q: steps };
-  // Nach jeder neuen Aktion wieder das Intro, außer beim Vorspielen, bei festsitzender Kiste oder nach einer Warnung.
-  // Vor dem ersten Schritt gesetzt, damit „Dahinter ist kein Platz“ sichtbar bleibt
-  if (!s.auto && !s.stuck.length && msgKind(s.msg) !== 'warn') s = { ...s, msg: 'intro' };
+  // Jede neue Aktion räumt das Schild ab, außer beim Vorspielen und bei einer Warnung (sie bleibt bis „Zug zurück“);
+  // sitzt eine Kiste fest, kommt deren Warnung zurück. Vor dem ersten Schritt, damit „Dahinter ist kein Platz“ bleibt
+  if (!s.auto && msgKind(s.msg) !== 'warn') s = { ...s, msg: s.stuck.length ? 'stuck' : null };
   return s.a ? s : startNext(s, now);
 }
 
@@ -279,7 +278,7 @@ export function undo(g: Game): Game {
     confetti: false,
     stuck,
   };
-  return { ...r, msg: r.won ? winKey(r) : stuck.length ? 'stuck' : 'intro' };
+  return { ...r, msg: r.won ? winKey(r) : stuck.length ? 'stuck' : null };
 }
 
 const winKey = (g: Game): MsgKey => (g.shownWin ? 'shownWin' : 'win');
@@ -290,7 +289,7 @@ const winKey = (g: Game): MsgKey => (g.shownWin ? 'shownWin' : 'win');
  */
 export function restart(g: Game, quiet = false): Game {
   const s = quiet ? g : stopped(g);
-  if (!s.moves && !s.won) return quiet ? s : { ...s, msg: 'intro' };
+  if (!s.moves && !s.won) return quiet ? s : { ...s, msg: null };
   const r: Game = {
     ...withSnapshot(s),
     ...startPose(s.L),
@@ -305,9 +304,9 @@ export function restart(g: Game, quiet = false): Game {
   return quiet ? r : setback({ ...r, msg: 'restarted' });
 }
 
-/** „Nochmal“ nach dem Sieg: still neu starten, Verlauf leeren, Intro */
+/** „Nochmal“ nach dem Sieg: still neu starten, Verlauf leeren, Schild leer */
 export function again(g: Game): Game {
-  return { ...restart(g, true), hist: [], msg: 'intro' };
+  return { ...restart(g, true), hist: [], msg: null };
 }
 
 /** Tipp: erster Schub einer schubkürzesten Lösung als Auswahl und türkiser Pfeil */
@@ -337,11 +336,11 @@ export function pushVia(g: Game, id: number, d: Dir, now: number): Game | null {
   return path ? act(g, [...path, d], now) : null;
 }
 
-/** Vorspielen Schub für Schub mit dem Löser; geht es nicht weiter, endet das Vorspielen mit dem Intro */
+/** Vorspielen Schub für Schub mit dem Löser; geht es nicht weiter, endet das Vorspielen mit leerem Schild */
 function autoStep(g: Game, now: number): Game {
   const r = solve(g.L, g.boxes, g.p);
   const next = r && 'box' in r ? pushVia(g, r.box, r.d, now) : null;
-  return next ?? { ...g, auto: false, msg: 'intro' };
+  return next ?? { ...g, auto: false, msg: null };
 }
 
 /**
@@ -362,5 +361,5 @@ export function showSolution(g: Game, now: number, cap = SOLVE_CAP): Game {
     : s;
 }
 
-/** Vorspielen abbrechen (Taste, Tippen, Wischen, Menü): Puffer leeren, Intro */
+/** Vorspielen abbrechen (Taste, Tippen, Wischen, Menü): Puffer leeren, Schild leer */
 export const stopAuto = stopped;

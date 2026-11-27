@@ -230,3 +230,19 @@ export const fakeWakeLock = (page: Page) =>
 
 /** Was die vorgetäuschte Wake-Lock-Sperre erlebt hat */
 export const wakeLog = (page: Page) => page.evaluate(() => (window as unknown as { __wakeLog: string[] }).__wakeLog);
+
+type Box = { x: number; y: number; width: number; height: number } | null;
+
+/** Rahmen eines Elements auf der Seite (null, wenn es nicht angezeigt wird) */
+export const box = (page: Page, selector: string): Promise<Box> => page.locator(selector).boundingBox();
+
+/** Zwei Rahmen überschneiden sich nicht (ein fehlender oder leerer Rahmen überschneidet nichts) */
+export const apart = (a: Box, b: Box) =>
+  !a ||
+  !b ||
+  a.width * a.height === 0 ||
+  b.width * b.height === 0 ||
+  a.x + a.width <= b.x ||
+  b.x + b.width <= a.x ||
+  a.y + a.height <= b.y ||
+  b.y + b.height <= a.y;

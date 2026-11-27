@@ -47,13 +47,11 @@ describe('Lektionen', () => {
     expect(LESSONS[0]).toMatchObject({
       title: 'Erster Schubs',
       idea: 'Laufen und schieben: eine Kiste, ein Ziel.',
-      intro: 'Schieb die Kiste auf das gelbe Feld.',
     });
-    expect(LESSONS[14]).toMatchObject({
-      title: 'Meisterstück',
-      intro: 'Das Meisterstück. Nimm dir Zeit, „Zug zurück“ hilft immer.',
-    });
-    for (const l of LESSONS) expect([l.title, l.idea, l.intro].every((t) => t.length > 0)).toBe(true);
+    expect(LESSONS[14]).toMatchObject({ title: 'Meisterstück' });
+    for (const l of LESSONS) expect([l.title, l.idea].every((t) => t.length > 0)).toBe(true);
+    // Keine Lektionshinweise auf dem Schild mehr (Issue #11): die Lektion trägt keinen Intro-Text
+    for (const l of LESSONS) expect(l).not.toHaveProperty('intro');
   });
 
   it.each(LESSONS)('Lektion $n: höchstens 10 breit und 9 hoch, je Kiste ein Ziel', (l) => {

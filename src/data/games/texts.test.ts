@@ -51,8 +51,8 @@ describe('Sieg-Text', () => {
 });
 
 describe('Schild', () => {
-  it('Intro ist der Text der Lektion', () => {
-    for (const l of LESSONS) expect(signText('intro', l, 0)).toBe(l.intro);
+  it('ohne Meldung bleibt das Schild leer, auch zu Beginn jeder Lektion (keine Lektionshinweise)', () => {
+    for (const l of LESSONS) expect(signText(null, l, 0)).toBe('');
   });
 
   it('jeder Schlüssel hat einen Text, wörtlich aus dem Entwurf', () => {
@@ -60,7 +60,6 @@ describe('Schild', () => {
       'blocked',
       'stuck',
       'unsolvable',
-      'placed',
       'atStart',
       'restarted',
       'tipDead',
@@ -74,7 +73,7 @@ describe('Schild', () => {
     expect(SIGN.atStart).toBe('Ganz am Anfang, weiter zurück geht es nicht.');
     expect(SIGN.unsolvable).toBe('So geht es nicht mehr auf. Mit „Zug zurück“ ein paar Schritte zurück.');
     expect(SIGN.stuck).toBe('Diese Kiste kommt hier nicht mehr weg. Mit „Zug zurück“ geht es weiter.');
-    expect(SIGN.placed).toBe('Die Kiste steht.');
+    expect(Object.values(SIGN)).not.toContain('Die Kiste steht.');
     expect(SIGN.tip).toBe('Tipp: Diese Kiste in Pfeilrichtung schieben.');
     expect(SIGN.shownWin).toBe('So geht es. Jetzt du? „Nochmal“ startet die Lektion neu.');
   });

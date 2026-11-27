@@ -71,6 +71,8 @@ export class GameScreen {
   private fx: Particle[] = [];
   private deco = decoFor(this.L, KAJE_DECO);
   private hits: Hits | null = null;
+  /** zuletzt gesetzte Höhe der Insel (--board-h), damit der Stil nur bei Änderung neu berechnet wird */
+  private boardH = '';
   private down: { readonly x: number; readonly y: number; readonly id: number } | null = null;
   /** Sieg mit Konfetti, bevor der nachgeladene Teil da war */
   private burstWanted = false;
@@ -327,6 +329,7 @@ export class GameScreen {
     this.next.hidden = !g.won;
     this.again.hidden = !g.won;
     this.offer.hidden = g.won || !g.offered;
+    this.gin.classList.toggle('won', g.won);
     // Ein eben versteckter Knopf (Nochmal, Weiter) hatte den Fokus: zurück aufs Feld statt auf <body>
     // (Chromium nimmt ihm den Fokus schon beim Verstecken, daher vorher merken)
     if (had instanceof HTMLElement && had.hidden) this.focus();
@@ -351,9 +354,16 @@ export class GameScreen {
     const world = gameWorld(this.g, now, { deco: this.deco, fx: this.fx });
     this.hits = renderWorld(this.canvas, world, this.host.camera(), {
       maxS: 1.6,
-      maxH: Math.max(140, f.clientHeight - 6),
+      // Hochkant hält das Feld oben Platz für Schild und Knöpfe frei (padding-top, game.css)
+      maxH: Math.max(140, f.clientHeight - parseFloat(getComputedStyle(f).paddingTop) - 6),
       noRing: f.clientWidth < NO_RING_BELOW,
       pad: 4,
     }).hits;
+    // Schild und Knöpfe sitzen hochkant direkt über der Insel
+    const h = this.canvas.style.height;
+    if (h !== this.boardH) {
+      this.boardH = h;
+      this.gin.style.setProperty('--board-h', h);
+    }
   }
 }

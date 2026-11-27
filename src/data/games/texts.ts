@@ -4,12 +4,11 @@ import type { CardState } from '../../lib/games/sokoban/progress';
 import type { MsgKey } from '../../lib/games/sokoban/state';
 import { LESSONS, type Lesson } from './lessons';
 
-/** Schild-Texte ohne Intro (steht je Lektion) und ohne Sieg (mit Zahlen, siehe winText) */
+/** Schild-Texte ohne Sieg (mit Zahlen, siehe winText); ohne Meldung bleibt das Schild leer */
 export const SIGN = {
   blocked: 'Dahinter ist kein Platz für die Kiste.',
   stuck: 'Diese Kiste kommt hier nicht mehr weg. Mit „Zug zurück“ geht es weiter.',
   unsolvable: 'So geht es nicht mehr auf. Mit „Zug zurück“ ein paar Schritte zurück.',
-  placed: 'Die Kiste steht.',
   atStart: 'Ganz am Anfang, weiter zurück geht es nicht.',
   restarted: 'Neu gestartet. Mit „Zug zurück“ kommst du zum alten Stand.',
   tipDead: 'Von hier aus geht es nicht mehr. Nimm mit „Zug zurück“ ein paar Schritte zurück.',
@@ -18,7 +17,7 @@ export const SIGN = {
   noOptions: 'Diese Kiste lässt sich gerade nirgendwohin schieben.',
   showing: 'So geht es: Schau zu. Wenn du selbst weitermachen willst, tipp aufs Feld oder drück eine Taste.',
   shownWin: 'So geht es. Jetzt du? „Nochmal“ startet die Lektion neu.',
-} as const satisfies Record<Exclude<MsgKey, 'intro' | 'win'>, string>;
+} as const satisfies Record<Exclude<MsgKey, 'win'>, string>;
 
 /** Zusatz nach dem Sieg in der letzten Lektion */
 export const FINALE = ' Damit ist die Einführung geschafft.';
@@ -35,9 +34,9 @@ export function winText(moves: number, optimum: number, finale: boolean): string
   return head + (finale ? FINALE : '');
 }
 
-/** Text des Schilds für eine Meldung in einer Lektion bei moves Zügen */
-export function signText(key: MsgKey, lesson: Pick<Lesson, 'n' | 'intro' | 'moves'>, moves: number): string {
-  if (key === 'intro') return lesson.intro;
+/** Text des Schilds für eine Meldung in einer Lektion bei moves Zügen; ohne Meldung leer */
+export function signText(key: MsgKey | null, lesson: Pick<Lesson, 'n' | 'moves'>, moves: number): string {
+  if (key === null) return '';
   if (key === 'win') return winText(moves, lesson.moves, isFinale(lesson.n));
   return SIGN[key];
 }

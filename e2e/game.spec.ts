@@ -7,6 +7,8 @@ import { CONFETTI_LIFE } from '../src/lib/games/sokoban/confetti';
 import { SIGN } from '../src/data/games/texts';
 import { ARROW_FILL } from '../src/data/games/kaje';
 import {
+  apart,
+  box,
   colourCount,
   drawn,
   extras,
@@ -46,7 +48,7 @@ async function press(page: Page, key: string) {
 }
 
 test.describe('Spielfeld', () => {
-  test('Lektion 1: Titel, Zähler, Feld, Schild mit dem Intro, Knöpfe; gemerkt als letzte; ohne Fehler', async ({
+  test('Lektion 1: Titel, Zähler, Feld, leeres Schild (Live-Region), Knöpfe; gemerkt als letzte; ohne Fehler', async ({
     page,
   }) => {
     const errors = watchErrors(page);
@@ -65,7 +67,8 @@ test.describe('Spielfeld', () => {
     await expect(field).toBeVisible();
     await expect(field).toHaveAttribute('tabindex', '0');
     expect(await drawn(page, FIELD)).toBe(true);
-    await expect(sign(page)).toHaveText(lesson(1).intro);
+    // Keine Lektionshinweise: Das Schild ist zu Beginn leer, bleibt aber als Live-Region im Baum
+    await expect(sign(page)).toHaveText('');
     await expect(sign(page)).toHaveAttribute('aria-live', 'polite');
     await expect(sign(page)).toHaveClass('sign');
     await expect(s.getByRole('button', { name: 'Zug zurück' })).toBeVisible();
@@ -99,7 +102,7 @@ test.describe('Spielfeld', () => {
     await expect(page).toHaveURL(/#lektion-2$/);
     await expect(spiel(page).getByRole('heading', { level: 2, name: 'Lektion 2: Um die Ecke' })).toBeVisible();
     await expect(count(page)).toHaveText('0 Züge');
-    await expect(sign(page)).toHaveText(lesson(2).intro);
+    await expect(sign(page)).toHaveText('');
     expect(await stored(page, 'last')).toBe('"e2"');
     expect(errors).toEqual([]);
   });
@@ -112,7 +115,7 @@ test.describe('Spielfeld', () => {
     await expect(sign(page)).toHaveText(/^Geschafft!/);
     await press(page, 'z');
     await expect(count(page)).toHaveText('8 Züge');
-    await expect(sign(page)).toHaveText(lesson(1).intro);
+    await expect(sign(page)).toHaveText('');
     await expect(spiel(page).getByRole('link', { name: 'Weiter zu Lektion 2' })).toBeHidden();
     await press(page, 'r');
     await expect(count(page)).toHaveText('0 Züge');
@@ -124,7 +127,7 @@ test.describe('Spielfeld', () => {
     await spiel(page).getByRole('button', { name: 'Nochmal' }).click();
     await render(page);
     await expect(count(page)).toHaveText('0 Züge');
-    await expect(sign(page)).toHaveText(lesson(1).intro);
+    await expect(sign(page)).toHaveText('');
     await expect(spiel(page).getByRole('button', { name: 'Nochmal' })).toBeHidden();
     await spiel(page).getByRole('button', { name: 'Zug zurück' }).click();
     await expect(sign(page)).toHaveText('Ganz am Anfang, weiter zurück geht es nicht.');
@@ -169,14 +172,47 @@ test.describe('Spielfeld', () => {
     await expect(page.locator('body')).not.toHaveClass(/\bplaying\b/);
   });
 
-  test('Lektion 3: „Die Kiste steht.“, die nächste Aktion bringt das Intro zurück', async ({ page }) => {
+  test('Lektion 3: eine Kiste auf dem Ziel braucht kein Schild', async ({ page }) => {
     await openGame(page, { hash: '#lektion-3', store: upTo(3) });
     await playLurd(page, 'uLdlUU');
-    await expect(sign(page)).toHaveText('Die Kiste steht.');
+    await expect(count(page)).toHaveText('6 Züge');
+    await expect(sign(page)).toHaveText('');
     await expect(sign(page)).toHaveClass('sign');
-    await press(page, 'ArrowDown');
-    await expect(sign(page)).toHaveText(lesson(3).intro);
   });
+
+  for (const [width, height] of [
+    [390, 844],
+    [667, 375],
+  ] as const)
+    test(`${width}×${height}: Schild und Knöpfe nehmen dem Feld keinen Platz und liegen nie auf der Insel`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height });
+      await openGame(page, { hash: '#lektion-4', store: upTo(4) });
+      const SIGN_SEL = '#spiel [data-ks="sign"]';
+      const field = await box(page, '#spiel .field');
+      const board = await box(page, FIELD);
+      expect((await box(page, SIGN_SEL))?.height).toBe(0);
+      await expect(sign(page)).not.toHaveCSS('display', 'none');
+      // Kiste in die Ecke oben links (dort, wovor das Schild warnt), dann drei Rückschläge: das Angebot
+      await playLurd(page, 'ruLLdlU');
+      await expect(sign(page)).toHaveClass('sign warn');
+      const warn = await box(page, SIGN_SEL);
+      expect(warn!.height).toBeGreaterThan(20);
+      await press(page, 'r');
+      const offer = spiel(page).getByRole('button', { name: 'Zu knifflig? Überspringen' });
+      await expect(offer).toBeVisible();
+      for (const b of [warn, await box(page, SIGN_SEL), await offer.boundingBox()]) {
+        expect(apart(b, board)).toBe(true);
+        // hochkant im Himmel direkt über der Insel, quer daneben
+        if (height > width) expect(b!.y + b!.height).toBeLessThanOrEqual(board!.y + 1);
+        else expect(b!.x).toBeGreaterThanOrEqual(field!.x + field!.width);
+      }
+      expect(await box(page, '#spiel .field')).toEqual(field);
+      expect(await box(page, FIELD)).toEqual(board);
+      // Tippen geht durch die leere Fläche hindurch aufs Feld
+      await expect(page.locator('#spiel .gmsg')).toHaveCSS('pointer-events', 'none');
+    });
 
   test('#lektion-2 merkt sich „e2“, die gesperrte #lektion-9 nicht', async ({ page }) => {
     await openGame(page, { hash: '#lektion-2', store: { 'best.e1': { moves: 9, pushes: 4 } } });
@@ -532,11 +568,11 @@ test.describe('Tipp und Lösung', () => {
     await spiel(page).getByRole('button', { name: 'Lösung zeigen' }).click();
     await render(page, 4);
     await page.keyboard.press('x');
-    await expect(sign(page)).toHaveText(lesson(2).intro);
+    await expect(sign(page)).toHaveText('');
     const moves = await count(page).textContent();
     await render(page, 40);
     await expect(count(page)).toHaveText(moves!);
-    await expect(sign(page)).toHaveText(lesson(2).intro);
+    await expect(sign(page)).toHaveText('');
   });
 
   test('das Menü zu öffnen beendet das Vorspielen', async ({ page }) => {
@@ -546,7 +582,7 @@ test.describe('Tipp und Lösung', () => {
     await render(page, 4);
     await page.keyboard.press('m');
     await expect(page.locator('#spiel dialog.menu')).toBeVisible();
-    await expect(sign(page)).toHaveText(lesson(2).intro);
+    await expect(sign(page)).toHaveText('');
     await page.keyboard.press('Escape');
     await expect(page.locator('#spiel dialog.menu')).toBeHidden();
     const moves = await count(page).textContent();

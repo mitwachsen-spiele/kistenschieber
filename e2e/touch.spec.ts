@@ -7,7 +7,8 @@ import { makeCamera, screenDirs } from '../src/lib/games/oblique/camera';
 import { SIGN } from '../src/data/games/texts';
 import { ARROW_FILL } from '../src/data/games/kaje';
 import { padAngles } from '../src/scripts/games/ks-input';
-import { colourCount, openGame, playLurd, render, spot, swipe } from './helpers';
+import { LESSONS } from '../src/data/games/lessons';
+import { apart, box, colourCount, openGame, playLurd, render, spot, swipe } from './helpers';
 
 test.use({ hasTouch: true, viewport: { width: 390, height: 844 } });
 
@@ -182,6 +183,46 @@ test.describe('ohne Touch', () => {
 });
 
 test.describe('Ziele und Platz', () => {
+  test('quer 667×375: Warnung, Angebot und Sieg stehen neben dem Feld über dem Steuerkreuz, das Feld bleibt gleich', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 667, height: 375 });
+    await openGame(page, { hash: '#lektion-4', store: upTo(4) });
+    await touchOn(page);
+    const field = await box(page, '#spiel .field');
+    const board = await box(page, FIELD);
+    const shown = async () => {
+      // Tasten schalten Touch aus, Antippen wieder ein
+      await page.locator('[data-ks="title"]').tap();
+      await expect(page.locator('html')).toHaveClass(/\btouch\b/);
+      await render(page);
+      const parts = [await box(page, '#spiel [data-ks="sign"]'), await box(page, '#spiel .after')];
+      for (const b of parts) {
+        expect(apart(b, board)).toBe(true);
+        expect(apart(b, await box(page, '#spiel .pad'))).toBe(true);
+      }
+      expect(await box(page, '#spiel .field')).toEqual(field);
+      expect(await box(page, FIELD)).toEqual(board);
+      return parts;
+    };
+    // Kiste in die Ecke oben links (zwei Rückschläge), Neustart als dritter: Warnung, dann das Angebot
+    await playLurd(page, 'ruLLdlU');
+    await expect(sign(page)).toHaveClass('sign warn');
+    await shown();
+    await page.keyboard.press('r');
+    await render(page, 4);
+    await expect(page.getByRole('button', { name: 'Zu knifflig? Überspringen' })).toBeVisible();
+    await shown();
+    await page.keyboard.press('r');
+    await render(page, 4);
+    await playLurd(page, LESSONS[3]!.sol);
+    await expect(sign(page)).toHaveText(/^Geschafft!/);
+    const [, after] = await shown();
+    expect(after!.height).toBeGreaterThan(40);
+    // Nach dem Sieg geht kein Schritt mehr: Das Steuerkreuz ist weg, behält aber seine Breite
+    await expect(pad(page)).toBeHidden();
+  });
+
   for (const [width, height] of [
     [390, 844],
     [844, 390],

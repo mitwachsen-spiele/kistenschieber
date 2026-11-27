@@ -44,7 +44,7 @@ Beide Schriften sind über `@fontsource` lokal gebündelt, nur die `latin`-Schni
 - **Pixel-Rahmen:** vier Box-Schatten statt `border` (`--ks-px`, 3 px), dadurch fehlen die Eckpixel.
 - **Knopf (`.btn`):** helle Fläche, Pixel-Rahmen, sinkt beim Drücken 2 px ein. `.btn.big` für die großen Knöpfe, `.btn.primary` in Gold mit hellem Kantenlicht oben und dunklem unten. Gedrückte Umschalter (`aria-pressed="true"`) sind golden. Alle Knöpfe auf Handy und Tablet mindestens 48 px hoch.
 - **Fokus:** 3 px Gold, 2 px Abstand, auch auf der Spielfläche.
-- **Schild (`.sign`):** helle Fläche unter dem Feld, `aria-live`; bei einer Warnung `--warn-soft`, beim Sieg `--ok-soft`.
+- **Schild (`.sign`):** helle Fläche, nur mit Meldung (leer unsichtbar, nimmt keinen Platz), `aria-live`; hochkant im Himmel direkt über der Insel, quer in der Spalte neben dem Feld, nie auf der Insel; bei einer Warnung `--warn-soft`, beim Sieg `--ok-soft`.
 - **Karte (`.card.lv`):** Vorschau der Lektion, Titel, Unterzeile, Status-Zeile mit ✓ oder ↷. Hebt sich beim Überfahren um 3 px (nicht bei reduzierter Bewegung). Gesperrt mit Deckkraft 0,62 und grauer Vorschau. Die Lektion, die dran ist, mit goldenem Rahmen innen und außen.
 - **Pille (`.pill`):** kleine Marke neben Überschriften, `.pill.on` grün für „abgeschlossen“.
 - **Hinweiskasten (`.advice`), Menü (`dialog.menu`):** Holzfläche, das Menü höchstens 380 px bzw. 92 % breit.

@@ -109,11 +109,16 @@ describe('Züge und Animation', () => {
     expect(settle(s)).toMatchObject({ moves: 0, msg: 'blocked', a: null });
   });
 
-  it('nach „blocked“ bringt die nächste Aktion das Intro zurück (bewusst anders als im Entwurf)', () => {
+  it('nach „blocked“ räumt die nächste Aktion das Schild ab (bewusst anders als im Entwurf)', () => {
     const B = deepFreeze(newGame(parseLevel('#######\n# @$$.#\n#    .#\n#######')));
     const s = settle(key(B, DIRS.right, later()));
     expect(s.msg).toBe('blocked');
-    expect(settle(act(s, [DIRS.down], later()))).toMatchObject({ msg: 'intro', moves: 1 });
+    expect(settle(act(s, [DIRS.down], later()))).toMatchObject({ msg: null, moves: 1 });
+  });
+
+  it('eine neue Lektion beginnt mit leerem Schild (keine Lektionshinweise)', () => {
+    expect(gameOf(1)).toMatchObject({ msg: null });
+    expect(msgKind(null)).toBe('');
   });
 
   it('merkt sich während einer Animation bis zu zwei Tasten, jede mit Schnappschuss', () => {
@@ -173,7 +178,7 @@ describe('Sieg', () => {
 
   it('Zug zurück nach dem Sieg nimmt den Sieg zurück', () => {
     const s = undo(press(gameOf(1), lesson(1).sol!));
-    expect(s).toMatchObject({ won: false, moves: 8, pushes: 3, msg: 'intro', confetti: false, a: null, q: [] });
+    expect(s).toMatchObject({ won: false, moves: 8, pushes: 3, msg: null, confetti: false, a: null, q: [] });
   });
 
   it('Zug zurück vor einen Sieg zeigt den Sieg-Text wieder', () => {
@@ -184,8 +189,8 @@ describe('Sieg', () => {
 
   it('„Nochmal“ startet neu und leert den Verlauf', () => {
     const s = again(press(gameOf(1), lesson(1).sol!));
-    expect(s).toMatchObject({ won: false, moves: 0, pushes: 0, hist: [], msg: 'intro', setbacks: 0, p: gameOf(1).p });
-    expect(again(gameOf(1))).toMatchObject({ hist: [], msg: 'intro', moves: 0 });
+    expect(s).toMatchObject({ won: false, moves: 0, pushes: 0, hist: [], msg: null, setbacks: 0, p: gameOf(1).p });
+    expect(again(gameOf(1))).toMatchObject({ hist: [], msg: null, moves: 0 });
   });
 });
 
@@ -198,13 +203,13 @@ describe('Zug zurück und Neustart', () => {
     const played = press(gameOf(1), 'rr');
     const r = deepFreeze(restart(played));
     expect(r).toMatchObject({ moves: 0, p: gameOf(1).p, dir: 'j', msg: 'restarted', setbacks: 1 });
-    expect(undo(r)).toMatchObject({ moves: 2, p: played.p, msg: 'intro' });
+    expect(undo(r)).toMatchObject({ moves: 2, p: played.p, msg: null });
   });
 
-  it('Neustart bei 0 Zügen tut nichts außer dem Intro', () => {
+  it('Neustart bei 0 Zügen tut nichts außer das Schild abzuräumen', () => {
     const g = deepFreeze({ ...gameOf(1), msg: 'atStart' as const });
     const r = restart(g);
-    expect(r).toMatchObject({ msg: 'intro', setbacks: 0, hist: [], moves: 0 });
+    expect(r).toMatchObject({ msg: null, setbacks: 0, hist: [], moves: 0 });
     expect(restart(g, true)).toBe(g);
   });
 
@@ -225,7 +230,7 @@ describe('Zug zurück und Neustart', () => {
     expect(walked.msg).toBe('stuck');
     const back = undo(walked);
     expect(back).toMatchObject({ stuck: [0], msg: 'stuck' });
-    expect(undo(back)).toMatchObject({ stuck: [], msg: 'intro', moves: 0 });
+    expect(undo(back)).toMatchObject({ stuck: [], msg: null, moves: 0 });
   });
 });
 
@@ -249,10 +254,16 @@ describe('Prüfung nach jedem Schub', () => {
     expect(msgKind(s.msg)).toBe('warn');
   });
 
-  it('Kiste auf dem Ziel ohne Sieg: „Die Kiste steht.“, die nächste Aktion zeigt wieder das Intro', () => {
+  it('Kiste auf dem Ziel ohne Sieg: kein Schild (die Kiste zeigt es selbst)', () => {
     const s = press(gameOf(3), 'uldluu');
-    expect(s).toMatchObject({ msg: 'placed', won: false });
-    expect(press(s, 'd').msg).toBe('intro');
+    expect(s.L.goals.has(s.boxes[0]!) || s.L.goals.has(s.boxes[1]!)).toBe(true);
+    expect(s).toMatchObject({ msg: null, won: false });
+  });
+
+  it('sitzt eine Kiste fest, bringt die nächste Aktion nach einer anderen Meldung deren Warnung zurück', () => {
+    const s = deepFreeze({ ...press(gameOf(4), 'u'), msg: 'blocked' as const });
+    expect(s.stuck).toEqual([0]);
+    expect(press(s, 'd').msg).toBe('stuck');
   });
 
   it('nach einer Warnung bleibt sie bei der nächsten Aktion stehen', () => {
@@ -322,7 +333,7 @@ describe('Tipp', () => {
   it('Kiste ohne Möglichkeit: Meldung „nirgendwohin“', () => {
     const corner = deepFreeze(newGame(parseLevel('#####\n#$ .#\n#@  #\n#####')));
     expect(toggleSelect(corner, 0)).toMatchObject({ sel: 0, msg: 'noOptions' });
-    expect(toggleSelect(gameOf(1), 0)).toMatchObject({ sel: 0, msg: 'intro' });
+    expect(toggleSelect(gameOf(1), 0)).toMatchObject({ sel: 0, msg: null });
   });
 });
 
@@ -376,10 +387,10 @@ describe('Lösung zeigen', () => {
     expect(settle(won).shownWin).toBe(true);
   });
 
-  it('jede Taste beendet das Vorspielen mit dem Intro', () => {
+  it('jede Taste beendet das Vorspielen und räumt das Schild ab', () => {
     const s = deepFreeze(showSolution(gameOf(3), later()));
     const k = key(s, DIRS.up, later());
-    expect(k).toMatchObject({ auto: false, msg: 'intro' });
+    expect(k).toMatchObject({ auto: false, msg: null });
     const idle = gameOf(3);
     expect(stopAuto(idle)).toBe(idle);
     expect(undo(s)).toMatchObject({ auto: false, moves: 0 });
@@ -387,9 +398,9 @@ describe('Lösung zeigen', () => {
     expect(tip(deepFreeze({ ...s, a: null }))).toMatchObject({ auto: false });
   });
 
-  it('endet still mit dem Intro, wenn der Löser nicht weiterkommt', () => {
+  it('endet still mit leerem Schild, wenn der Löser nicht weiterkommt', () => {
     const stuck = deepFreeze({ ...press(gameOf(15), 'dr'), auto: true, msg: 'showing' as const });
-    expect(tick(stuck, later())).toMatchObject({ auto: false, msg: 'intro' });
+    expect(tick(stuck, later())).toMatchObject({ auto: false, msg: null });
   });
 });
 

@@ -3,6 +3,8 @@
 // Die Komponente (scripts/games/ks-kistenschieber.ts) zeigt je Hash einen davon. Ohne JavaScript lesen sich Start und
 // Lektionsliste als Dokument; Einstellungen und Spielfeld bleiben verborgen, an ihrer Stelle steht ein Hinweis.
 // Das Spielfeld steht mit Lektion 1 im HTML; ks-game.ts setzt beim Öffnen einer Lektion Titel, Schild und Knöpfe.
+// Das Schild ist leer, bis es etwas zu sagen gibt (keine Lektionshinweise). Mit den Knöpfen nach dem Sieg liegt es
+// hochkant im Himmel direkt über der Insel, quer in der Spalte neben dem Feld (game.css), nie auf der Insel.
 // Texte wörtlich aus dem Entwurf „Kistenschieber“.
 import '../styles/game.css';
 import { parseLevel } from '../lib/games/sokoban/level';
@@ -218,9 +220,7 @@ const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
           <canvas role="img" tabindex="0" aria-label={fieldLabel(first)}></canvas>
         </div>
         <div class="gmsg">
-          <p class="sign" aria-live="polite" data-ks="sign">
-            {first.intro}
-          </p>
+          <p class="sign" aria-live="polite" data-ks="sign"></p>
           <div class="after">
             <a class="btn big primary" href={`#${second.id}`} data-ks="next" hidden>
               {nextText(first.n)}
