@@ -83,12 +83,22 @@ class KsKistenschieber extends HTMLElement {
       'keydown',
       (e) => {
         this.sfx.unlock();
+        // Rahmen ums Spielfeld nur, wenn es mit Tab angesteuert wurde: Pfeiltasten machen den Fokus im Browser
+        // ebenfalls „sichtbar“, das Feld läge sonst beim Spielen ständig in einem goldenen Rahmen (game.css)
+        this.classList.toggle('tabnav', e.key === 'Tab');
         if (this.shown === 'spiel') this.play.onKey(e);
       },
       { signal },
     );
-    // Jede Geste darf den Ton wecken (vor den Handlern der Knöpfe und des Spielfelds)
-    addEventListener('pointerdown', () => this.sfx.unlock(), { signal, capture: true });
+    // Jede Geste darf den Ton wecken (vor den Handlern der Knöpfe und des Spielfelds) und nimmt den Tab-Rahmen weg
+    addEventListener(
+      'pointerdown',
+      () => {
+        this.sfx.unlock();
+        this.classList.remove('tabnav');
+      },
+      { signal, capture: true },
+    );
     document.addEventListener(
       'visibilitychange',
       () => {
