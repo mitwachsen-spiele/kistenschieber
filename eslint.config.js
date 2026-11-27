@@ -7,7 +7,7 @@ import tseslint from 'typescript-eslint';
 import astro from 'eslint-plugin-astro';
 
 export default defineConfig(
-  { ignores: ['dist/', '.astro/', 'node_modules/', 'test-results/', 'playwright-report/', 'coverage/'] },
+  { ignores: ['dist/', '.e2e/', '.astro/', 'node_modules/', 'test-results/', 'playwright-report/', 'coverage/'] },
   js.configs.recommended,
   tseslint.configs.recommended,
   astro.configs.recommended,
@@ -27,13 +27,30 @@ export default defineConfig(
     },
   },
   { files: ['**/*.test.ts', 'e2e/**'], rules: { 'max-lines': 'off', 'max-lines-per-function': 'off' } },
-  // Browser-Tests warten auf einen Zustand, nie auf Uhrzeit
+  // Browser-Tests warten auf einen Zustand, nie auf Uhrzeit oder eine Zahl von Bildern; das Spiel öffnen nur die Helfer
+  // (e2e/helpers.ts: openGame wartet, bis es steht, mit Test-Uhr; render zeichnet ein Bild)
   {
     files: ['e2e/**'],
+    ignores: ['e2e/helpers.ts'],
     rules: {
       'no-restricted-properties': [
         'error',
-        { property: 'waitForTimeout', message: 'Nicht auf Uhrzeit warten: auf einen Zustand warten.' },
+        {
+          property: 'waitForTimeout',
+          message: 'Nicht auf Uhrzeit warten: auf einen Zustand warten oder die Test-Uhr nutzen (e2e/helpers.ts).',
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'CallExpression[callee.name=/^(waitFrames|frames)$/]',
+          message: 'Nicht auf eine Zahl von Bildern warten: Bilder zeichnet `render` (e2e/helpers.ts).',
+        },
+        {
+          selector: "CallExpression[callee.property.name='goto'][arguments.0.value=/^\\/(\\?|#|$)/]",
+          message:
+            'Das Spiel nur über e2e/helpers.ts öffnen: `openGame` (wartet, bis es steht), `gotoGame` nur fürs Laden.',
+        },
       ],
     },
   },

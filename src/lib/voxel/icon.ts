@@ -1,40 +1,58 @@
-// Das Seiten-Icon: ein Grasblock. Als SVG (favicon.svg) und gerastert für favicon.ico, PNG-Icons und apple-touch-icon.
+// Seiten- und App-Icon: ein Block der schrägen Ansicht (im Spiel die Kiste) auf einer Fläche mit Verlauf. Gezeichnet
+// mit denselben Zeichnern wie im Browser (svg-pen.ts), als SVG für favicon.svg und gerastert (sharp) für favicon.ico,
+// apple-touch-icon und die Icons der App. Generisch: Block, Kamera, Farben und Maße kommen als Parameter.
 import sharp from 'sharp';
-import { CUBE_VIEWBOX } from './cube';
-import { cubeFaces } from './render';
-import { GRASS_SIDE, GRASS_TOP, PAL_GRASS } from './textures';
+import type { Camera } from '../games/oblique/camera';
+import { isoBlock } from '../games/oblique/svg-pen';
+import type { BlockFaces } from '../games/oblique/textures';
 
-export function iconSvg(size?: number): string {
-  const dims = size ? ` width="${size}" height="${size}"` : '';
-  return `<svg xmlns="http://www.w3.org/2000/svg"${dims} viewBox="${CUBE_VIEWBOX}">${cubeFaces(GRASS_TOP, GRASS_SIDE, GRASS_SIDE, PAL_GRASS)}</svg>`;
+const num = (n: number): string => String(Math.round(n * 1000) / 1000);
+
+export type BlockIcon = {
+  faces: BlockFaces; // Texturen des Blocks
+  cam: Camera; // Blickwinkel
+  from: string; // Farbe oben
+  to: string; // Farbe unten
+  radius: number; // Rundung der Ecken als Anteil der Kante (0: eckig, etwa für maskable Icons)
+  fill: number; // Breite des Blocks als Anteil der Kante
+  dy: number; // Versatz des Blocks nach unten als Anteil der Kante
+};
+
+/** Lage des Blocks im Icon als Anteile der Kante: links, oben, Breite, Höhe */
+export function blockBox(icon: BlockIcon): { x: number; y: number; w: number; h: number } {
+  const b = isoBlock(icon.cam, icon.faces);
+  const w = icon.fill;
+  const h = (w * b.height) / b.width;
+  return { x: (1 - w) / 2, y: (1 - h) / 2 + icon.dy, w, h };
 }
 
-/**
- * Der Würfel mittig auf einer Fläche: Er nimmt den Anteil `fill` der Kantenlänge ein (z. B. 0,6 für Icons mit Maske,
- * deren sichere Zone ein Kreis über 80 % ist).
- */
-export function framedIconSvg(size: number, background: string, fill: number): string {
-  const inner = Math.round(size * Math.min(1, Math.max(0, fill)));
-  const at = Math.round((size - inner) / 2);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" fill="${background}"/><svg x="${at}" y="${at}" width="${inner}" height="${inner}" viewBox="${CUBE_VIEWBOX}">${cubeFaces(GRASS_TOP, GRASS_SIDE, GRASS_SIDE, PAL_GRASS)}</svg></svg>`;
+/** Das Icon als SVG mit `size` × `size` Pixeln */
+export function blockIconSvg(size: number, icon: BlockIcon): string {
+  const b = isoBlock(icon.cam, icon.faces, 1, 'i');
+  const box = blockBox(icon);
+  const r = num(size * icon.radius);
+  const [x, y, w, h] = [box.x, box.y, box.w, box.h].map((v) => num(v * size));
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
+    `<defs><linearGradient id="i-bg" x1="0" y1="0" x2="0" y2="1">` +
+    `<stop offset="0" stop-color="${icon.from}"/><stop offset="1" stop-color="${icon.to}"/></linearGradient>` +
+    `${b.defs}</defs>` +
+    `<rect width="${size}" height="${size}" rx="${r}" ry="${r}" fill="url(#i-bg)"/>` +
+    `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 ${num(b.width)} ${num(b.height)}">${b.body}</svg>` +
+    `</svg>`
+  );
 }
 
-/**
- * Quadratisches PNG; `background` z. B. für das apple-touch-icon, das keine Transparenz mag. Mit `fill` sitzt der
- * Würfel kleiner mittig auf dem Hintergrund (Icons der App).
- */
-export function iconPng(size: number, background?: string, fill?: number): Promise<Buffer> {
-  if (background && fill !== undefined)
-    return sharp(Buffer.from(framedIconSvg(size, background, fill)))
-      .png()
-      .toBuffer();
-  const img = sharp(Buffer.from(iconSvg(size)));
-  return (background ? img.flatten({ background }) : img).png().toBuffer();
+/** Das Icon als quadratisches PNG */
+export function iconPng(size: number, icon: BlockIcon): Promise<Buffer> {
+  return sharp(Buffer.from(blockIconSvg(size, icon)))
+    .png()
+    .toBuffer();
 }
 
 /** favicon.ico mit eingebettetem 32×32-PNG (ICO-Container: 6 Byte Kopf, 16 Byte Verzeichniseintrag, Bilddaten). */
-export async function iconIco(): Promise<Buffer> {
-  const png = await iconPng(32);
+export async function iconIco(icon: BlockIcon): Promise<Buffer> {
+  const png = await iconPng(32, icon);
   const head = Buffer.alloc(22);
   head.writeUInt16LE(0, 0); // reserviert
   head.writeUInt16LE(1, 2); // Typ: Icon

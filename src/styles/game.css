@@ -1,0 +1,768 @@
+/* Spielseite Kistenschieber (Entwurf „Kistenschieber“): Start, Levelwahl, Einstellungen. Farben aus tokens.css;
+   Knöpfe, Schild und Zähler bleiben im Dunkelmodus hell (--paper, --ink). Gold ist die einzige Aktionsfarbe. */
+body.ks-body {
+  background: var(--sky);
+  color: var(--text);
+  font: 400 1rem/1.55 var(--font-body);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) body.ks-body {
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] body.ks-body {
+  color-scheme: dark;
+}
+
+.ks {
+  display: block;
+  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px)
+    max(16px, env(safe-area-inset-left, 0px));
+}
+.ks *,
+.ks *::before,
+.ks *::after {
+  box-sizing: border-box;
+}
+.ks [hidden] {
+  display: none !important;
+}
+/* Ohne JavaScript: kein Bild, keine Knöpfe, die nur mit JavaScript etwas tun */
+.ks:not(.ready) .ks-js {
+  display: none !important;
+}
+/* Mit JavaScript vor `ready`: nur der Bildschirm aus dem Hash, sonst stünden Start und Lektionsliste kurz übereinander
+   und die Seite spränge. Ohne JavaScript (scripting: none) bleibt alles als Dokument lesbar */
+@media (scripting: enabled) {
+  .ks:not(.ready) > #level {
+    display: none;
+  }
+  .ks:not(.ready):has(> #level:target, #level :target, > #einstellungen:target) > #start {
+    display: none;
+  }
+  .ks:not(.ready):has(> #level:target, #level :target) > #level {
+    display: grid;
+  }
+}
+/* Überschriften bekommen den Fokus nur beim Bildschirmwechsel (ks-kistenschieber.ts), sie sind keine Bedienelemente */
+.ks [tabindex='-1']:focus {
+  outline: none;
+}
+.ks a:focus-visible,
+.ks button:focus-visible,
+.ks input:focus-visible,
+.ks canvas:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ---------- Bildschirme ---------- */
+.screen {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-block: 24px 56px;
+  display: grid;
+  gap: 28px;
+  align-content: start;
+}
+.screen h2 {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 1.35rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.screen h3 {
+  margin: 10px 0 0;
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 0;
+}
+.lede {
+  margin: 0;
+  max-width: 68ch;
+}
+.note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--soft);
+  line-height: 1.45;
+}
+
+/* ---------- Knöpfe ----------
+   Hell mit --ink als Schrift; der Pixel-Rahmen kommt aus --line (--ks-px), damit er auch auf dem dunklen Himmel und
+   den dunklen Flächen als dunkle Kante sichtbar bleibt (wie --ink #0a0f18 im Dunkelmodus des Entwurfs) */
+.btn {
+  font: 500 0.95rem var(--font-pixel);
+  color: var(--ink);
+  background: var(--paper);
+  border: 0;
+  padding: 7px 12px;
+  box-shadow: var(--ks-px);
+  cursor: pointer;
+  min-height: 40px;
+}
+.btn[aria-pressed='true'] {
+  background: var(--gold);
+  box-shadow:
+    var(--ks-px),
+    inset 0 3px 0 var(--gold-light),
+    inset 0 -4px 0 var(--gold-dark);
+}
+.btn:active {
+  transform: translateY(2px);
+}
+.btn.big {
+  font-size: 1.05rem;
+  padding: 10px 16px;
+  min-height: 52px;
+}
+.btn.primary {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  background: var(--gold);
+  box-shadow:
+    var(--ks-px),
+    inset 0 3px 0 var(--gold-light),
+    inset 0 -4px 0 var(--gold-dark);
+}
+a.btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--ink);
+}
+a.btn:hover {
+  color: var(--ink);
+}
+.opts {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.row > b {
+  font-family: var(--font-pixel);
+  font-weight: 500;
+  font-size: 0.95rem;
+  min-width: 8.5em;
+}
+
+/* ---------- Szenen ---------- */
+.scene {
+  background: linear-gradient(var(--sky-deep), var(--sky-low));
+  box-shadow: var(--ks-px);
+  padding: 12px;
+  min-width: 0;
+}
+.scene canvas {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+}
+@media (max-width: 760px) {
+  .scene {
+    padding: 6px;
+  }
+}
+
+/* ---------- Start ---------- */
+.screen.start {
+  justify-items: center;
+  text-align: center;
+}
+.starthead h1 {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: clamp(2.2rem, 6vw, 3.6rem);
+  line-height: 1.1;
+}
+/* Auf dem Himmel in --text statt --soft: Grau auf Hellblau hätte zu wenig Kontrast */
+.starthead p {
+  margin: 6px 0 0;
+  color: var(--text);
+}
+.startscene {
+  width: 100%;
+  max-width: 920px;
+}
+.startbtns {
+  display: grid;
+  gap: 14px;
+  width: min(420px, 100%);
+}
+.startbtns .btn {
+  display: flex;
+  justify-content: center;
+  justify-self: stretch;
+}
+/* Wie im Entwurf: der goldene Knopf klein und mittig über den breiten */
+.startbtns .btn.primary {
+  justify-self: center;
+}
+/* Handy quer: Szene links, Knöpfe rechts, damit „Spielen“ ohne Scrollen zu sehen ist */
+@media (orientation: landscape) and (max-height: 500px) {
+  .screen.start {
+    grid-template-columns: minmax(0, 1fr) minmax(200px, 300px);
+    align-items: center;
+    gap: 16px 24px;
+    padding-block: 12px 24px;
+  }
+  .starthead {
+    grid-column: 1 / -1;
+  }
+  .startbtns {
+    width: 100%;
+  }
+}
+
+/* ---------- Levelwahl ---------- */
+.pill {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 1px 8px;
+  font: 500 0.8rem var(--font-pixel);
+  color: var(--soft);
+  background: var(--slot);
+  box-shadow: inset 0 0 0 2px var(--frame);
+  vertical-align: 3px;
+}
+.lvgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
+  gap: 22px;
+}
+.card {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 16px 18px;
+  background: var(--card);
+  color: var(--text);
+  text-decoration: none;
+  box-shadow: var(--ks-px);
+  min-width: 0;
+}
+.card:hover {
+  color: var(--text);
+}
+.card strong {
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+.card .tag {
+  font-family: var(--font-pixel);
+  font-size: 0.8rem;
+  color: var(--soft);
+}
+.card span {
+  font-size: 0.93rem;
+}
+.card:hover {
+  transform: translateY(-3px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .card:hover {
+    transform: none;
+  }
+}
+.pill.on {
+  color: var(--ink);
+  background: var(--ok-soft);
+  box-shadow: inset 0 0 0 2px var(--ok-edge);
+}
+.card.lv {
+  padding-top: 0;
+  overflow: hidden;
+}
+/* Vorschau oben über die ganze Breite der Karte, auf Himmel wie die Szenen */
+.thumb {
+  margin: 0 -18px 6px;
+  padding: 8px 12px;
+  background: linear-gradient(var(--sky-deep), var(--sky-low));
+  min-height: 120px;
+  display: grid;
+  align-items: center;
+}
+.thumb canvas {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+}
+.card.lv .badge {
+  font-weight: 800;
+  font-size: 0.88rem;
+}
+.card.lv.done .badge,
+.card.lv.done strong::after {
+  color: var(--ok);
+}
+.card.lv.done strong::after {
+  content: '  ✓';
+  white-space: pre;
+}
+.card.lv.skipped .badge,
+.card.lv.skipped strong::after {
+  color: var(--skip);
+}
+.card.lv.skipped strong::after {
+  content: '  ↷';
+  white-space: pre;
+}
+.card.lv.shown .badge {
+  color: var(--info);
+}
+.card.lv.locked {
+  opacity: 0.62;
+}
+.card.lv.locked .thumb canvas {
+  filter: grayscale(1);
+}
+/* Durch die Deckkraft wird die Unterzeile blasser; in --text statt --soft bleibt sie lesbar (Kontrast ≥ 4,5:1) */
+.card.lv.locked .tag {
+  color: var(--text);
+}
+/* „dran“: die Lektion, bei der es weitergeht, in Gold gerahmt (Menüführung im Entwurf: „gold: dran“). Der Rahmen
+   bleibt im Umriss der anderen Karten: außen 1px --line, dann 2px Gold, innen noch 2px Gold über der Vorschau */
+.card.lv.cur {
+  position: relative;
+  box-shadow:
+    0 -2px 0 0 var(--gold),
+    0 2px 0 0 var(--gold),
+    -2px 0 0 0 var(--gold),
+    2px 0 0 0 var(--gold),
+    var(--ks-px);
+}
+.card.lv.cur::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 2px var(--gold);
+  pointer-events: none;
+}
+/* Ausblick auf die Level: nur Ankündigung, nichts zum Anklicken */
+.chapters {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+.chapters li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 0;
+}
+/* Schmal steht die Spanne immer unter dem Kapitelnamen, bündig, statt mal daneben, mal darunter */
+@media (max-width: 560px) {
+  .chapters li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .chapters .pill {
+    margin-left: 0;
+  }
+}
+.chapters b {
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+/* ---------- Gesperrte Lektion ---------- */
+.advice {
+  background: var(--wood);
+  box-shadow: var(--ks-px);
+  padding: 16px 20px;
+  display: grid;
+  gap: 8px;
+  justify-self: center;
+  width: 100%;
+  max-width: 38rem;
+}
+.advice .which {
+  font-family: var(--font-pixel);
+}
+.advice .which .pill {
+  margin-left: 6px;
+}
+.screen .advice h2 {
+  font-size: 1.15rem;
+}
+.advice p {
+  margin: 0;
+}
+.advice .opts {
+  margin-top: 6px;
+}
+
+/* ---------- Einstellungen ---------- */
+/* Ohne Seitenleiste wie im Entwurf: die Spalte mittig, wie der Start darüber */
+.screen.settings {
+  max-width: 860px;
+}
+.setgroup {
+  background: var(--card);
+  box-shadow: var(--ks-px);
+  padding: 16px 20px;
+  display: grid;
+  gap: 10px;
+  max-width: 860px;
+}
+.screen .setgroup h2 {
+  font-size: 1.15rem;
+}
+.setgroup p {
+  margin: 0;
+}
+.setgroup .note {
+  margin: -4px 0 6px;
+}
+.cam {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 3.2em;
+  gap: 8px 10px;
+  align-items: center;
+  background: var(--slot);
+  box-shadow: inset 0 0 0 2px var(--frame);
+  padding: 10px 12px;
+}
+.cam label {
+  font-family: var(--font-pixel);
+  font-size: 0.95rem;
+}
+.cam input[type='range'] {
+  width: 100%;
+  min-width: 0;
+  accent-color: var(--gold-edge);
+  height: 28px;
+}
+.cam output {
+  font-family: var(--font-pixel);
+  text-align: right;
+}
+.cam .note,
+.cam .btn {
+  grid-column: 1 / -1;
+}
+.cam .btn {
+  justify-self: start;
+}
+/* Handwahl nur, wenn Touch benutzt wird (scripts/games/ks-touch.ts) */
+html:not(.touch) .touch-only,
+html:not(.touch) .pad {
+  display: none !important;
+}
+/* Schon installiert: keine Anleitung zum Installieren */
+@media (display-mode: standalone) {
+  .ks .install {
+    display: none;
+  }
+}
+
+/* ---------- Spielfeld ----------
+   Ein Container füllt den ganzen Bildschirm (100dvh, Safe Areas); sein Seitenverhältnis entscheidet, ob die Knöpfe
+   unter (hochkant) oder neben dem Feld (quer, ab 6/5) liegen. Niedrig (≤ 430 px) wird alles enger, schmal (≤ 380 px)
+   werden die Knöpfe schmaler. Schild und Zähler bleiben auch dunkel hell. Kein Ziehen der Seite, kein Markieren, kein
+   Doppeltipp-Zoom. Wie im Entwurf (CSS „Spiel“) */
+body.playing {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+.ks.playing {
+  padding: 0;
+}
+.screen.play {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  max-width: none;
+  padding: max(4px, env(safe-area-inset-top, 0px)) max(4px, env(safe-area-inset-right, 0px))
+    max(4px, env(safe-area-inset-bottom, 0px)) max(4px, env(safe-area-inset-left, 0px));
+  gap: 0;
+}
+.game {
+  container-type: size;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  background: linear-gradient(var(--sky-deep), var(--sky-low));
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+/* Am Schreibtisch mit Rahmen und etwas Abstand; auf Handy und Tablet randlos */
+@media (min-width: 901px) and (pointer: fine) {
+  .screen.play {
+    padding: 16px;
+  }
+  .game {
+    box-shadow: var(--ks-px);
+  }
+}
+.game button,
+.game a {
+  touch-action: manipulation;
+}
+.gin {
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: 'bar' 'field' 'msg' 'ctl';
+  gap: 10px;
+  padding: 10px 12px 12px;
+}
+.gbar {
+  grid-area: bar;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.btn.gbtn {
+  min-height: 48px;
+  padding: 8px 18px;
+}
+.screen .gtitle {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gcount {
+  font-family: var(--font-pixel);
+  font-size: 0.95rem;
+  font-weight: 500;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 6px 10px;
+  box-shadow: var(--ks-px);
+  white-space: nowrap;
+}
+.field {
+  grid-area: field;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.field canvas {
+  display: block;
+  max-width: 100%;
+  touch-action: none;
+  cursor: pointer;
+  image-rendering: pixelated;
+}
+.gmsg {
+  grid-area: msg;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+.sign {
+  justify-self: center;
+  margin: 0;
+  min-height: 2.6em;
+  max-width: 60ch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--ks-px);
+  font-size: 1.02rem;
+  font-weight: 700;
+  padding: 6px 16px;
+}
+.sign.warn {
+  background: var(--warn-soft);
+}
+.sign.win {
+  background: var(--ok-soft);
+}
+.after {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+.after:not(:has(> :not([hidden]))) {
+  display: none;
+}
+.gctl {
+  grid-area: ctl;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 14px;
+}
+.gin.left .gctl {
+  flex-direction: row-reverse;
+}
+.gacts {
+  display: grid;
+  gap: 10px;
+}
+.gacts .btn {
+  min-width: 112px;
+  min-height: 56px;
+}
+@container (min-aspect-ratio: 6/5) {
+  .gin {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'bar bar' 'field ctl' 'msg ctl';
+  }
+  .gin.left {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: 'bar bar' 'ctl field' 'ctl msg';
+  }
+  .gctl,
+  .gin.left .gctl {
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+  }
+}
+@container (max-height: 430px) {
+  .gin {
+    gap: 6px;
+    padding: 6px 10px 8px;
+  }
+  .gacts {
+    grid-auto-flow: column;
+  }
+  .gacts .btn {
+    min-width: 0;
+    min-height: 48px;
+    padding: 6px 12px;
+  }
+  .pad {
+    grid-template-columns: repeat(3, 48px);
+    grid-template-rows: repeat(3, 48px);
+    gap: 4px;
+  }
+}
+@container (max-width: 380px) {
+  .gacts .btn {
+    min-width: 92px;
+  }
+  .pad {
+    grid-template-columns: repeat(3, 54px);
+    grid-template-rows: repeat(3, 54px);
+  }
+}
+
+/* Steuerkreuz (nur mit Touch, siehe oben): Pfeile nach der Kamera gedreht (ks-game.ts), die Mitte ist eine Kiste.
+   Gedrückt gold wie jede Aktion */
+.pad {
+  display: grid;
+  grid-template-columns: repeat(3, 58px);
+  grid-template-rows: repeat(3, 58px);
+  gap: 6px;
+  transition: transform 0.25s;
+}
+.pad button {
+  border: 0;
+  background: var(--paper);
+  box-shadow: var(--ks-px);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--ink);
+  padding: 0;
+}
+.pad button:active {
+  transform: translateY(2px);
+  background: var(--gold);
+}
+.pad svg {
+  width: 30px;
+  height: 30px;
+  fill: currentColor;
+}
+.pad .u {
+  grid-area: 1 / 2;
+}
+.pad .l {
+  grid-area: 2 / 1;
+}
+.pad .r {
+  grid-area: 2 / 3;
+}
+.pad .d {
+  grid-area: 3 / 2;
+}
+.pad .l svg {
+  transform: rotate(-90deg);
+}
+.pad .r svg {
+  transform: rotate(90deg);
+}
+.pad .d svg {
+  transform: rotate(180deg);
+}
+.pad .mid {
+  grid-area: 2 / 2;
+  background: var(--crate);
+  box-shadow: inset 0 0 0 4px var(--crate-dark);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pad {
+    transition: none;
+  }
+}
+
+/* Menü im Spiel: modaler Dialog (ks-game.ts), Einträge volle Breite */
+.ks dialog.menu {
+  border: 0;
+  padding: 20px;
+  background: var(--wood);
+  color: var(--text);
+  box-shadow: var(--ks-px);
+  width: min(380px, 92vw);
+  max-height: 92vh;
+}
+.ks dialog.menu[open] {
+  display: grid;
+  gap: 10px;
+}
+.ks dialog.menu::backdrop {
+  background: rgb(29 40 56 / 50%);
+}
+.ks dialog.menu h2 {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+}
+.ks dialog.menu .btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}

@@ -4,19 +4,22 @@
 import '@fontsource/pixelify-sans/latin-500.css';
 import '@fontsource/pixelify-sans/latin-700.css';
 import '@fontsource/nunito/latin-400.css';
-import '@fontsource/nunito/latin-600.css';
+import '@fontsource/nunito/latin-700.css';
 import '@fontsource/nunito/latin-800.css';
 import '../styles/global.css';
 import '../styles/sections.css';
-import { HOME_TITLE, SITE, SKY_1 } from '../data/site';
+import { HOME_TITLE, SITE, THEME_DARK, THEME_LIGHT } from '../data/site';
+import { APP } from '../data/pwa';
 import { cubeDefs, textureCss } from '../lib/voxel/blocks';
 
 interface Props {
   title?: string;
   description?: string;
   noindex?: boolean; // z. B. 404: nicht indexieren, kein canonical
+  bodyClass?: string; // z. B. ks-body: Spielseite auf Himmelblau (src/styles/game.css)
+  skipLink?: boolean; // Link „Zum Inhalt springen“; die Spielseite hat nichts davor und nutzt den Hash für Bildschirme
 }
-const { title, description = SITE.description, noindex = false } = Astro.props;
+const { title, description = SITE.description, noindex = false, bodyClass, skipLink = true } = Astro.props;
 const fullTitle = title ? `${title} – ${SITE.title}` : HOME_TITLE;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
@@ -25,14 +28,21 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 <html lang="de">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <meta name="theme-color" content={SKY_1} />
+    <meta name="theme-color" content={THEME_LIGHT} media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content={THEME_DARK} media="(prefers-color-scheme: dark)" />
+    {/* Installierbar als App (src/data/pwa.ts); jede Seite verweist aufs Manifest (npm run verify:pwa) */}
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content={APP.shortName} />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
@@ -42,15 +52,17 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta property="og:image" content={new URL('/og.png', Astro.site)} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content={`Schwebende Voxel-Insel mit Baum und Pilz im Himmel – ${SITE.title}`} />
+    <meta property="og:image:alt" content={`Blaue Holzkiste auf Wasserblau – ${SITE.title}`} />
     <meta name="twitter:card" content="summary_large_image" />
     <Fragment set:html={`<style>${textureCss()}</style>`} />
     <slot name="head" />
   </head>
-  <body>
-    <a class="skip-link" href="#inhalt">
-      Zum Inhalt springen
-    </a>
+  <body class={bodyClass}>
+    {skipLink && (
+      <a class="skip-link" href="#inhalt">
+        Zum Inhalt springen
+      </a>
+    )}
     <svg aria-hidden="true" class="svg-defs">
       <defs set:html={cubeDefs()} />
     </svg>

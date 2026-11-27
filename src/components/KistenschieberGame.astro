@@ -1,0 +1,296 @@
+---
+// Das Spiel: alle Bildschirme als statisches HTML in <ks-kistenschieber> (Start, Levelwahl, Einstellungen, Spielfeld).
+// Die Komponente (scripts/games/ks-kistenschieber.ts) zeigt je Hash einen davon. Ohne JavaScript lesen sich Start und
+// Lektionsliste als Dokument; Einstellungen und Spielfeld bleiben verborgen, an ihrer Stelle steht ein Hinweis.
+// Das Spielfeld steht mit Lektion 1 im HTML; ks-game.ts setzt beim Öffnen einer Lektion Titel, Schild und Knöpfe.
+// Texte wörtlich aus dem Entwurf „Kistenschieber“.
+import '../styles/game.css';
+import { parseLevel } from '../lib/games/sokoban/level';
+import { LESSONS } from '../data/games/lessons';
+import {
+  GAME_BUTTONS,
+  LOCKED,
+  MENU,
+  PAD,
+  cardTag,
+  countText,
+  fieldLabel,
+  lessonName,
+  nextText,
+  continueText,
+  introPill,
+  lockedGo,
+  lockedWhy,
+  sceneLabel,
+  startStatus,
+  thumbLabel,
+} from '../data/games/texts';
+import { CHAPTERS, TEASER, chapterName, chapterRange } from '../data/games/teaser';
+import { SETTINGS_DEFAULT } from '../scripts/games/ks-save';
+
+const first = LESSONS[0]!;
+const second = LESSONS[1]!;
+const cards = LESSONS.map((l) => ({ ...l, tag: cardTag(parseLevel(l.xsb).boxes.length, l.moves) }));
+const { drehung, neigung } = SETTINGS_DEFAULT;
+/** Steuerkreuz in der Reihenfolge des Entwurfs; der Pfeil zeigt nach oben und wird gedreht (ks-game.ts) */
+const PAD_KEYS = [
+  ['u', 'up'],
+  ['l', 'left'],
+  ['r', 'right'],
+  ['d', 'down'],
+] as const;
+/** Pfeil des Steuerkreuzes (viewBox 24) */
+const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
+---
+
+<ks-kistenschieber class="ks">
+  <section id="start" class="screen start" aria-labelledby="ks-title">
+    <div class="starthead">
+      <h1 id="ks-title" tabindex="-1">
+        Kistenschieber
+      </h1>
+      <p data-ks="status">{startStatus(0, LESSONS.length, false)}</p>
+    </div>
+    <div class="scene startscene ks-js">
+      <canvas role="img" aria-label={sceneLabel(first)}></canvas>
+    </div>
+    <div class="startbtns">
+      <a class="btn big primary" href={`#${first.id}`} data-ks="continue">
+        {continueText(false, 1)}
+      </a>
+      <a class="btn big" href="#level">
+        Level wählen
+      </a>
+      <a class="btn big ks-js" href="#einstellungen">
+        Einstellungen
+      </a>
+    </div>
+    <noscript>
+      <p class="note">
+        Zum Spielen braucht Kistenschieber JavaScript. Ohne JavaScript stehen hier nur die Lektionen zum Nachlesen.
+      </p>
+    </noscript>
+  </section>
+
+  <section id="level" class="screen" aria-labelledby="level-title">
+    <h2 id="level-title" tabindex="-1">
+      Level wählen
+    </h2>
+    <p class="lede">
+      Die Lektionen werden der Reihe nach frei; Überspringen oder „Lösung zeigen“ machen die nächste trotzdem frei.
+    </p>
+    <h3>
+      Einführung{' '}
+      <span class="pill" data-ks="intro-pill">
+        {introPill(LESSONS.length, false)}
+      </span>
+    </h3>
+    <div class="lvgrid">
+      {cards.map((l) => (
+        <a class="card lv" id={l.id} href={`#${l.id}`}>
+          <div class="thumb ks-js">
+            <canvas role="img" aria-label={thumbLabel(l.n)}></canvas>
+          </div>
+          <strong>
+            {l.n}. {l.title}
+          </strong>
+          <span class="tag">{l.tag}</span>
+          <span>{l.idea}</span>
+          <span class="badge" hidden></span>
+        </a>
+      ))}
+    </div>
+    <h3>
+      {TEASER.title} <span class="pill">{TEASER.pill}</span>
+    </h3>
+    <ul class="chapters">
+      {CHAPTERS.map((c) => (
+        <li>
+          <b>{chapterName(c)}</b> <span class="pill">{chapterRange(c)}</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section id="einstellungen" class="screen settings" aria-labelledby="set-title" hidden>
+    <h2 id="set-title" tabindex="-1">
+      Einstellungen
+    </h2>
+    <p class="lede">
+      Nur das Nötigste: der Blickwinkel und auf Handy und Tablet die Seite des Steuerkreuzes. Alles andere ist fest
+      eingestellt. Das Gerät merkt sich die Werte.
+    </p>
+    <div class="opts">
+      <a class="btn big primary" href={`#${first.id}`} data-ks="back">
+        Zurück zum Spiel
+      </a>
+      <a class="btn big" href="#start">
+        Startbildschirm
+      </a>
+    </div>
+    <section class="setgroup" aria-labelledby="set-view">
+      <h2 id="set-view">Ansicht</h2>
+      <div class="cam">
+        <label for="cam-yaw">Drehung</label>
+        <input type="range" id="cam-yaw" min="0" max="45" step="1" value={drehung} />
+        <output for="cam-yaw">{drehung}°</output>
+        <label for="cam-tilt">Neigung</label>
+        <input type="range" id="cam-tilt" min="20" max="80" step="1" value={neigung} />
+        <output for="cam-tilt">{neigung}°</output>
+        <span class="note">
+          0° Drehung schaut gerade von vorn, mehr Drehung schräg von der Seite; mehr Neigung schaut mehr von oben.
+        </span>
+        <button class="btn" type="button" data-ks="reset">
+          Zurücksetzen
+        </button>
+      </div>
+      <div class="scene">
+        <canvas role="img" aria-label="Vorschau der Ansicht"></canvas>
+      </div>
+    </section>
+    <section class="setgroup touch-only" aria-labelledby="set-hand">
+      <h2 id="set-hand">Bedienung</h2>
+      <div class="row" role="group" aria-label="Knöpfe">
+        <b>Knöpfe</b>
+        <div class="opts">
+          <button class="btn" type="button" aria-pressed="true" data-hand="rechts">
+            Rechte Hand
+          </button>
+          <button class="btn" type="button" aria-pressed="false" data-hand="links">
+            Linke Hand
+          </button>
+        </div>
+      </div>
+      <p class="note">
+        Auf welcher Seite das Steuerkreuz liegt, damit der Daumen es gut erreicht. Das Steuerkreuz erscheint von selbst,
+        sobald der Bildschirm angetippt wird, und verschwindet, wenn mit den Pfeiltasten gespielt wird.
+      </p>
+    </section>
+    <section class="setgroup install" aria-labelledby="set-install" data-ks="install">
+      <h2 id="set-install">Als App installieren</h2>
+      <p>
+        Auf dem Android-Handy oder -Tablet im Browsermenü „App installieren“ wählen. Auf iPhone und iPad in Safari über
+        „Teilen“ den Eintrag „Zum Home-Bildschirm“. Danach startet Kistenschieber ohne Browserleisten wie eine App und
+        läuft auch ohne Internet.
+      </p>
+    </section>
+  </section>
+
+  <section id="gesperrt" class="screen" aria-labelledby="locked-title" hidden>
+    <div class="advice">
+      <p class="which" id="locked-which">
+        <b data-ks="which"></b> <span class="pill">{LOCKED.state}</span>
+      </p>
+      <h2 id="locked-title" tabindex="-1" aria-describedby="locked-which">
+        {LOCKED.title}
+      </h2>
+      <p data-ks="why">{lockedWhy(first)}</p>
+      <div class="opts">
+        <a class="btn big primary" href={`#${first.id}`} data-ks="first">
+          {lockedGo(first.n)}
+        </a>
+        <a class="btn big" href="#level">
+          Level wählen
+        </a>
+        <a class="btn big" href="#einstellungen">
+          Einstellungen
+        </a>
+      </div>
+      <p class="note">{LOCKED.note}</p>
+    </div>
+  </section>
+
+  <section id="spiel" class="screen play" aria-labelledby="game-title" hidden>
+    <div class="game">
+      <div class="gin">
+        <div class="gbar">
+          <button class="btn gbtn" type="button" aria-haspopup="dialog" data-ks="menu">
+            {GAME_BUTTONS.menu}
+          </button>
+          <h2 class="gtitle" id="game-title" data-ks="title">
+            {lessonName(first)}
+          </h2>
+          <span class="gcount" data-ks="count">
+            {countText(0)}
+          </span>
+        </div>
+        <div class="field">
+          <canvas role="img" tabindex="0" aria-label={fieldLabel(first)}></canvas>
+        </div>
+        <div class="gmsg">
+          <p class="sign" aria-live="polite" data-ks="sign">
+            {first.intro}
+          </p>
+          <div class="after">
+            <a class="btn big primary" href={`#${second.id}`} data-ks="next" hidden>
+              {nextText(first.n)}
+            </a>
+            <button class="btn big" type="button" data-ks="again" hidden>
+              {GAME_BUTTONS.again}
+            </button>
+            <button class="btn big" type="button" data-ks="offer" hidden>
+              {GAME_BUTTONS.offer}
+            </button>
+          </div>
+        </div>
+        <div class="gctl">
+          <div class="gacts">
+            <button class="btn big" type="button" data-ks="undo">
+              {GAME_BUTTONS.undo}
+            </button>
+            <button class="btn big" type="button" data-ks="tip">
+              {GAME_BUTTONS.tip}
+            </button>
+          </div>
+          <div class="pad" role="group" aria-label={PAD.group}>
+            {PAD_KEYS.map(([cls, dir]) => (
+              <button class={cls} type="button" aria-label={PAD[dir]} data-pad={dir}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d={ARROW} />
+                </svg>
+              </button>
+            ))}
+            <span class="mid" aria-hidden="true"></span>
+          </div>
+        </div>
+      </div>
+      <dialog class="menu" aria-labelledby="menu-title">
+        <h2 id="menu-title">{lessonName(first)}</h2>
+        <button class="btn big primary" type="button" data-menu="resume">
+          {MENU.resume}
+        </button>
+        <button class="btn big" type="button" data-menu="restart">
+          {MENU.restart}
+        </button>
+        <button class="btn big" type="button" data-menu="tip">
+          {MENU.tip}
+        </button>
+        <button class="btn big" type="button" data-menu="solution">
+          {MENU.solution}
+        </button>
+        <button class="btn big" type="button" data-menu="skip">
+          {MENU.skip}
+        </button>
+        <a class="btn big" href="#level">
+          {MENU.level}
+        </a>
+        <a class="btn big" href="#einstellungen">
+          {MENU.settings}
+        </a>
+        <a class="btn big" href="#start">
+          {MENU.start}
+        </a>
+        <p class="note">{MENU.note}</p>
+      </dialog>
+    </div>
+  </section>
+</ks-kistenschieber>
+
+<script>
+  import '../scripts/games/ks-kistenschieber';
+  // Die Anmeldung des Service Workers wartet ohnehin aufs Laden der Seite; sie kommt nachgeladen, so bleibt der Kern klein
+  void import('../scripts/games/pwa-register').then(
+    (m) => m.registerServiceWorker(),
+    () => {},
+  );
+</script>

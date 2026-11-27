@@ -1,21 +1,36 @@
 // Guard-Gate nach dem Build (Teil von npm run verify): Die Seiten bleiben schnell und ohne Ballast.
-// Die Startseite lädt gar kein JavaScript, weder als Datei noch eingebettet. Keine Seite lädt Spielcode, Three.js oder
-// meldet einen Service Worker an, solange es nur der Platzhalter ist, und jede bleibt unter einem festen Budget. Kommt
-// das Spiel, bekommt es hier eigene Regeln (Vorbild: scripts/verify-bundles.ts in mitwachsen-spiele/weltenbummler).
+// Die Spielseite (index.html) lädt das Spiel unter einem Budget mit Luft (gemessen + 10 %); Three.js und WebGL gibt es
+// nirgends, das Spiel zeichnet mit Canvas 2D. Was der Kern per import() nachlädt (Anmeldung des Service Workers samt
+// den Regeln für Updates, Konfetti), misst eine eigene Grenze. Alle anderen Seiten bleiben unter 32 KB, ohne Spielcode
+// und ohne die Anmeldung eines Service Workers. Vorbild: scripts/verify-bundles.ts in mitwachsen-spiele/weltenbummler.
 // Logik und Tests: scripts/bundles.ts, scripts/bundles.test.ts
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { check, type Rule } from './bundles.ts';
+import { check, type Rule, type Usage } from './bundles.ts';
 
 const DIST = 'dist';
-// Spielcode, Three.js und die Anmeldung eines Service Workers
-const GAME_CODE = /larmic-mitwachsen|WebGLRenderer|three\.module|serviceWorker/;
+// Spielcode und die Anmeldung eines Service Workers: nur auf der Spielseite
+const GAME_CODE = /ks-kistenschieber|serviceWorker/;
+// Three.js und WebGL: nirgends
+const THREE = /WebGLRenderer|three\.module|webgl/;
 
 export const RULES: Rule[] = [
-  // Die Startseite holt kein JavaScript: keine Datei, kein eingebettetes Skript (Budget 0)
-  { name: 'Startseite ohne JavaScript', pages: /^index\.html$/, budget: 0, forbidden: GAME_CODE },
-  { name: 'Seiten ohne Spiel', pages: /./, budget: 32 * 1024, forbidden: GAME_CODE },
+  { name: 'Spiel', pages: /^index\.html$/, budget: 55.7 * 1024, forbidden: THREE }, // gemessen 50,6 KB (51833 B, Schritt 9)
+  {
+    name: 'Nachgeladen vom Kern',
+    pages: /^index\.html$/,
+    // Kommt es schon beim Laden, meldet das Gate es (dann wäre es nicht nachgeladen)
+    parts: [{ chunks: /\/pwa-register\.[\w-]+\.js$/ }, { chunks: /\/ks-menu\.[\w-]+\.js$/ }],
+    budget: 3.1 * 1024, // gemessen 2,8 KB (2888 B, Schritt 9)
+    forbidden: THREE,
+  },
+  {
+    name: 'Seiten ohne Spiel',
+    pages: /^(?!index\.html$)/,
+    budget: 32 * 1024,
+    forbidden: new RegExp(`${GAME_CODE.source}|${THREE.source}`),
+  },
 ];
 
 const pagesIn = (dir: string): string[] =>
@@ -32,9 +47,14 @@ const read = (path: string) => {
 };
 
 const pages = pagesIn(DIST);
-const problems = pages.flatMap((file) => check(relative(DIST, file), readFileSync(file, 'utf8'), read, RULES));
+const usage: Usage[] = [];
+const problems = pages.flatMap((file) => check(relative(DIST, file), readFileSync(file, 'utf8'), read, RULES, usage));
+const kib = (n: number) => `${(n / 1024).toFixed(1)} KB`;
+const budgetOf = (name: string) => RULES.find((r) => r.name === name)?.budget ?? 0;
+for (const u of usage.filter((x) => x.page === 'index.html'))
+  console.log(`  ${u.rule}: ${u.file ?? u.page} ${kib(u.bytes)} (${u.bytes} B) von ${kib(budgetOf(u.rule))}`);
 if (problems.length) {
   console.error(`Bundle-Gate: ${problems.length} Verstoß/Verstöße\n` + problems.map((p) => `  ✖ ${p}`).join('\n'));
   process.exit(1);
 }
-console.log(`✓ Bundle-Gate: ${pages.length} Seiten geprüft, Startseite ohne JavaScript, keine Seite mit Spielcode`);
+console.log(`✓ Bundle-Gate: ${pages.length} Seiten geprüft, Spiel unter dem Budget, keine andere Seite mit Spielcode`);

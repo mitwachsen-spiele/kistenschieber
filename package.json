@@ -17,12 +17,13 @@
     "verify:html": "html-validate \"dist/**/*.html\"",
     "verify:links": "linkinator dist --recurse --check-fragments --skip \"^https?://(?!localhost|127\\\\.0\\\\.0\\\\.1)\"",
     "verify:bundles": "node scripts/verify-bundles.ts",
-    "verify": "npm run verify:html && npm run verify:links && npm run verify:bundles && npm run verify:dist",
+    "verify": "npm run verify:html && npm run verify:links && npm run verify:bundles && npm run verify:dist && npm run verify:pwa",
     "gates": "npm run format:check && npm run lint && npm run arch && npm run check && npm test && npm run build && npm run verify && npm run test:e2e",
     "gates:ci": "bash scripts/ci-local.sh",
     "prepare": "git config core.hooksPath .githooks || true",
     "test:e2e": "playwright test",
-    "verify:dist": "node scripts/verify-dist.ts"
+    "verify:dist": "node scripts/verify-dist.ts",
+    "verify:pwa": "node scripts/verify-pwa.ts"
   },
   "dependencies": {
     "@fontsource/nunito": "^5.3.0",
