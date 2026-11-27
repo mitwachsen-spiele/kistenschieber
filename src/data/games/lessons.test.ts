@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { type Dir, cellType, nb, opposite, parseLevel, parseLurd } from '../../lib/games/sokoban/level';
 import { CHECK_CAP, findPath, solve, solveRun } from '../../lib/games/sokoban/solver';
+import { type ProgressKV, markShown, recordWin, stateOf } from '../../lib/games/sokoban/progress';
+import { AUTO_SLOWER, DURATION, busy, dirKey, newGame, showSolution, tick, tip } from '../../lib/games/sokoban/state';
 import { LESSONS } from './lessons';
 
 /** Ein Schritt nach den Sokoban-Regeln: laufen, schieben oder (null) geht nicht */
@@ -136,5 +138,44 @@ describe('Lektionen', () => {
     }
     expect(solve(L, boxes, p)).toEqual({ done: true });
     expect(pushes).toBeLessThanOrEqual(l.pushes);
+  });
+});
+
+/** Fortschritt im Arbeitsspeicher */
+function memoryKV(): ProgressKV & { readonly data: Map<string, unknown> } {
+  const data = new Map<string, unknown>();
+  return {
+    data,
+    best: () => null,
+    flag: (kind, n) => data.get(`${kind}.e${n}`) === true,
+    last: () => null,
+    setBest: (n, best) => void data.set(`best.e${n}`, best),
+    setFlag: (kind, n) => void data.set(`${kind}.e${n}`, true),
+    setLast: (ref) => void data.set('last', ref),
+  };
+}
+
+describe('Lektionen im Spielzustand', () => {
+  it.each(LESSONS)('Lektion $n: Tipp auf dem Start zeigt Kiste und Richtung wie solve()', (l) => {
+    const g = Object.freeze(newGame(parseLevel(l.xsb), { sol: l.sol }));
+    const r = solve(g.L, g.boxes, g.p);
+    if (!r || !('box' in r)) throw new Error('Startstellung muss lösbar sein');
+    expect(tip(g)).toMatchObject({ sel: r.box, hint: { box: r.box, d: dirKey(r.d) }, msg: 'tip' });
+  });
+
+  it.each(LESSONS)('Lektion $n: „Lösung zeigen“ spielt sol bis zum Sieg, ohne Bestwert', (l) => {
+    const kv = memoryKV();
+    let t = 0;
+    let g = Object.freeze(showSolution(newGame(parseLevel(l.xsb), { sol: l.sol }), t));
+    expect(g).toMatchObject({ auto: true, solutionShown: true, msg: 'showing' });
+    expect(g.hist).toHaveLength(1);
+    expect(g.a?.dur).toBe(DURATION[g.a!.kind] * AUTO_SLOWER);
+    for (let i = 0; i < 1000 && busy(g); i++) g = Object.freeze(tick(g, (t += 1000)));
+    expect(g).toMatchObject({ won: true, shownWin: true, confetti: false, msg: 'shownWin', moves: l.moves });
+    expect(g.pushes).toBe(l.pushes);
+    expect(recordWin(kv, l.n, { moves: g.moves, pushes: g.pushes, shown: g.shownWin })).toBe(false);
+    expect(kv.data.has(`best.e${l.n}`)).toBe(false);
+    markShown(kv, l.n);
+    expect(stateOf(kv, l.n)).toBe('shown');
   });
 });

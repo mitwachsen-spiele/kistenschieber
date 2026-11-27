@@ -11,11 +11,25 @@ export default defineConfig({
     hookTimeout: 120_000,
     coverage: {
       provider: 'v8',
-      // nur die reinen Module; Spielregeln (lib/games) und Spieldaten (data/games) gehören dazu
-      include: ['src/lib/**/*.ts', 'src/data/site.ts', 'src/data/games/**/*.ts', 'scripts/{bundles,dist}.ts'],
+      // nur die reinen Module; Spielregeln (lib/games), Spieldaten (data/games) und die reinen Teile des Browser-Codes
+      // gehören dazu. browser-store.ts greift auf window zu und bleibt draußen wie im Weltenbummler
+      include: [
+        'src/lib/**/*.ts',
+        'src/data/site.ts',
+        'src/data/games/**/*.ts',
+        'src/scripts/games/ks-save.ts',
+        'scripts/{bundles,dist}.ts',
+      ],
       reporter: [['text', { skipFull: true }], 'text-summary'],
       // Knapp unter dem gemessenen Stand: Sinkt die Abdeckung, fällt das Gate. Steigt sie, die Schwellen mitziehen.
-      thresholds: { statements: 90, branches: 85, functions: 90, lines: 90 },
+      thresholds: {
+        statements: 90,
+        branches: 85,
+        functions: 90,
+        lines: 90,
+        // Die reinen Browser-Module enger (wie im Weltenbummler)
+        'src/scripts/**/*.ts': { statements: 95, branches: 86, functions: 95, lines: 95 },
+      },
     },
   },
 });

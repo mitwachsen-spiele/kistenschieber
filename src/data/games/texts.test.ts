@@ -1,0 +1,75 @@
+import { describe, expect, it } from 'vitest';
+import { LESSONS } from './lessons';
+import { FINALE, GAME_BUTTONS, SIGN, countText, isFinale, lessonName, nextText, signText, winText } from './texts';
+
+const lesson = (n: number) => LESSONS[n - 1]!;
+
+describe('Sieg-Text', () => {
+  it('bis zum Optimum „kürzer geht es nicht“', () => {
+    expect(winText(9, 9, false)).toBe('Geschafft! 9 Züge, kürzer geht es nicht.');
+    expect(winText(8, 9, false)).toBe('Geschafft! 8 Züge, kürzer geht es nicht.');
+  });
+
+  it('darüber mit dem Optimum', () => {
+    expect(winText(12, 9, false)).toBe('Geschafft! 12 Züge, am kürzesten wären 9.');
+  });
+
+  it('Lektion 15 hängt „Damit ist die Einführung geschafft.“ an, die anderen nicht', () => {
+    const last = lesson(15);
+    expect(signText('win', last, last.moves)).toBe(
+      `Geschafft! ${last.moves} Züge, kürzer geht es nicht. Damit ist die Einführung geschafft.`,
+    );
+    expect(signText('win', last, 90)).toBe(
+      `Geschafft! 90 Züge, am kürzesten wären ${last.moves}. Damit ist die Einführung geschafft.`,
+    );
+    expect(FINALE).toBe(' Damit ist die Einführung geschafft.');
+    expect(signText('win', lesson(14), 999)).not.toContain('Einführung');
+  });
+});
+
+describe('Schild', () => {
+  it('Intro ist der Text der Lektion', () => {
+    for (const l of LESSONS) expect(signText('intro', l, 0)).toBe(l.intro);
+  });
+
+  it('jeder Schlüssel hat einen Text, wörtlich aus dem Entwurf', () => {
+    const keys: (keyof typeof SIGN)[] = [
+      'blocked',
+      'stuck',
+      'unsolvable',
+      'placed',
+      'atStart',
+      'restarted',
+      'tipDead',
+      'tipHard',
+      'tip',
+      'noOptions',
+      'showing',
+      'shownWin',
+    ];
+    for (const k of keys) expect(signText(k, lesson(1), 0)).toBe(SIGN[k]);
+    expect(SIGN.atStart).toBe('Ganz am Anfang, weiter zurück geht es nicht.');
+    expect(SIGN.unsolvable).toBe('So geht es nicht mehr auf. Mit „Zug zurück“ ein paar Schritte zurück.');
+    expect(SIGN.stuck).toBe('Diese Kiste kommt hier nicht mehr weg. Mit „Zug zurück“ geht es weiter.');
+    expect(SIGN.placed).toBe('Die Kiste steht.');
+    expect(SIGN.shownWin).toBe('So geht es. Jetzt du? „Nochmal“ startet die Lektion neu.');
+  });
+});
+
+describe('Zähler, Titel, Knöpfe', () => {
+  it('Zähler: „0 Züge“, „1 Zug“, „N Züge“', () => {
+    expect([countText(0), countText(1), countText(2)]).toEqual(['0 Züge', '1 Zug', '2 Züge']);
+  });
+
+  it('Name „Lektion N: Titel“', () => {
+    expect(lessonName(lesson(1))).toBe('Lektion 1: Erster Schubs');
+  });
+
+  it('nach dem Sieg weiter zur nächsten Lektion, nach Lektion 15 „Zur Levelwahl“', () => {
+    expect(nextText(1)).toBe('Weiter zu Lektion 2');
+    expect(nextText(14)).toBe('Weiter zu Lektion 15');
+    expect(nextText(15)).toBe('Zur Levelwahl');
+    expect([isFinale(14), isFinale(15)]).toEqual([false, true]);
+    expect(GAME_BUTTONS).toMatchObject({ again: 'Nochmal', offer: 'Zu knifflig? Überspringen' });
+  });
+});
