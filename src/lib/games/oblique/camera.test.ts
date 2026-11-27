@@ -159,6 +159,13 @@ describe('fitScene', () => {
     expect(fitScene(cam, area).s).toBe(fitScene(cam, area, { width: 600 }).s);
   });
 
+  it('inset: Abstand zur Breite statt 24 px (das Spielfeld nutzt die ganze Breite, Issue #15)', () => {
+    const f = fitScene(cam, area, { width: 300, pad: 4, inset: 0 });
+    expect(f.s).toBeCloseTo((300 - 8) / (f.x1 - f.x0), 12);
+    expect(fitScene(cam, area, { width: 300, inset: 24 }).s).toBe(fitScene(cam, area, { width: 300 }).s);
+    expect(f.s).toBeGreaterThan(fitScene(cam, area, { width: 300, pad: 4 }).s);
+  });
+
   it('mit maxH: höchstens (maxH − 2·pad) / Höhe, aber mindestens 0,15', () => {
     const f = fitScene(cam, area, { width: 5000, maxH: 200, pad: 4 });
     expect(f.s).toBeCloseTo((200 - 8) / (f.y1 - f.y0), 12);

@@ -339,3 +339,104 @@ test.describe('Ziele und Platz', () => {
       expect(await overflow()).toBeLessThanOrEqual(0);
     });
 });
+
+// Endpositionierung (Issue #15): Das Feld so groß wie möglich, Steuerkreuz, „Menü“ und „Zug zurück“ unten beim Daumen
+// (quer an der Seite der Hand), alles ganz im Bild, mindestens 48 px, nichts überlappt. Quer bekommt das Feld die ganze
+// Höhe: Titel und Zähler stehen oben in der Spalte daneben, nicht in einer eigenen Leiste
+test.describe('Positionierung', () => {
+  for (const [kind, width, height, share] of [
+    ['Handy hochkant', 390, 844, 0.3],
+    ['Handy hochkant', 360, 740, 0.3],
+    ['Handy quer', 844, 390, 0.42],
+    ['Handy quer', 740, 360, 0.42],
+    ['Tablet hochkant', 820, 1180, 0.5],
+    ['Tablet quer', 1180, 820, 0.5],
+  ] as const)
+    for (const hand of ['rechts', 'links'] as const)
+      test(`${kind} ${width}×${height}, ${hand === 'rechts' ? 'rechte' : 'linke'} Hand: großes Feld, Knöpfe beim Daumen, nichts verdeckt`, async ({
+        page,
+      }) => {
+        const landscape = width > height;
+        await page.setViewportSize({ width, height });
+        await openGame(page, { hash: '#lektion-15', store: { ...upTo(15), hand } });
+        await touchOn(page);
+        // größtes (15) und kleines Feld (1) der Einführung
+        for (const n of [15, 1]) {
+          if (n !== 15) {
+            await page.evaluate((h) => (location.hash = h), `#lektion-${n}`);
+            await expect(page.locator('[data-ks="title"]')).toContainText(`Lektion ${n}:`);
+            await render(page);
+          }
+          const board = (await box(page, FIELD))!;
+          // Feldanteil: Die Insel bedeckt einen großen Teil des Bildschirms und füllt ihr Feld in Breite oder Höhe aus
+          // (hochkant die Breite); auf dem Handy quer nutzt sie (fast) die ganze Höhe
+          const field = (await box(page, '#spiel .field'))!;
+          if (n === 15) expect((board.width * board.height) / (width * height)).toBeGreaterThanOrEqual(share);
+          if (landscape) expect(board.width >= field.width - 12 || board.height >= field.height - 12).toBe(true);
+          else expect(board.width).toBeGreaterThanOrEqual(field.width - 12);
+          if (landscape && height < 500) expect(board.height / height).toBeGreaterThanOrEqual(0.85);
+          const parts = {
+            menu: await box(page, '#spiel [data-ks="menu"]'),
+            undo: await box(page, '#spiel [data-ks="undo"]'),
+            pad: await box(page, '#spiel .pad'),
+            bar: await box(page, '#spiel .gbar'),
+          };
+          const keys = await page.locator('#spiel .pad button').evaluateAll((els) =>
+            els.map((el) => {
+              const r = el.getBoundingClientRect();
+              return { x: r.x, y: r.y, width: r.width, height: r.height };
+            }),
+          );
+          for (const b of [parts.menu, parts.undo, ...keys]) {
+            expect(b).not.toBeNull();
+            // ganz im Bild, mindestens 48 px, in der unteren Hälfte (Daumen), nicht über der Insel
+            expect(b!.x).toBeGreaterThanOrEqual(0);
+            expect(b!.y).toBeGreaterThanOrEqual(0);
+            expect(b!.x + b!.width).toBeLessThanOrEqual(width);
+            expect(b!.y + b!.height).toBeLessThanOrEqual(height);
+            expect(Math.min(b!.width, b!.height)).toBeGreaterThanOrEqual(48);
+            expect(b!.y + b!.height / 2).toBeGreaterThan(height / 2);
+            expect(apart(b, board)).toBe(true);
+          }
+          for (const [a, b] of [
+            [parts.menu, parts.undo],
+            [parts.menu, parts.pad],
+            [parts.undo, parts.pad],
+            [parts.bar, board],
+            [parts.bar, parts.pad],
+          ] as const)
+            expect(apart(a, b)).toBe(true);
+          // Das Steuerkreuz liegt am Rand der Hand; quer steht die Spalte samt Kopf auf der Seite der Hand
+          const p = parts.pad!;
+          if (hand === 'rechts') expect(p.x + p.width).toBeGreaterThan(width - 40);
+          else expect(p.x).toBeLessThan(40);
+          // „Zug zurück“ über „Menü“, beide dicht beim Steuerkreuz, aber mindestens 16 px daneben (kein Fehltipp)
+          const undo = parts.undo!;
+          const menu = parts.menu!;
+          expect(undo.y + undo.height).toBeLessThanOrEqual(menu.y);
+          const sideGap = hand === 'rechts' ? p.x - (undo.x + undo.width) : undo.x - (p.x + p.width);
+          expect(sideGap).toBeGreaterThanOrEqual(16);
+          expect(sideGap).toBeLessThanOrEqual(40);
+          // Hochkant steht die Insel mittig unter dem Platz für Meldungen: der Himmel verteilt sich über und unter ihr
+          if (!landscape) {
+            const room = await page
+              .locator('#spiel .field')
+              .evaluate((el) => parseFloat(getComputedStyle(el).paddingTop));
+            const above = board.y - field.y - room;
+            const below = field.y + field.height - (board.y + board.height);
+            expect(Math.abs(above - below)).toBeLessThanOrEqual(4);
+          }
+          if (landscape) {
+            const bar = parts.bar!;
+            if (hand === 'rechts') expect(bar.x).toBeGreaterThanOrEqual(board.x + board.width);
+            else expect(bar.x + bar.width).toBeLessThanOrEqual(board.x);
+          } else expect(parts.bar!.y + parts.bar!.height).toBeLessThanOrEqual(board.y);
+          // kein Scrollen
+          const overflow = await page.evaluate(() => ({
+            x: document.documentElement.scrollWidth - innerWidth,
+            y: document.documentElement.scrollHeight - innerHeight,
+          }));
+          expect(overflow).toEqual({ x: 0, y: 0 });
+        }
+      });
+});

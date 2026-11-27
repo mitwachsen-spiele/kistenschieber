@@ -40,6 +40,8 @@ export interface RenderOptions {
   readonly pad?: number;
   /** ohne Wasserrand (schmale Szenen) */
   readonly noRing?: boolean;
+  /** Abstand zur Breite des Elternelements (beide Seiten zusammen, CSS-px); ohne Wert 24 */
+  readonly inset?: number;
 }
 
 export interface Rendered {
@@ -223,6 +225,7 @@ export function renderWorld(cv: HTMLCanvasElement, W: World, cam: Camera, opt: R
     maxH: opt.maxH,
     pad: opt.pad,
     noRing: opt.noRing,
+    inset: opt.inset,
     ringZ: RING_Z,
   });
   const V = makeView(cam, fit.ox, fit.oy, fit.s);

@@ -72,8 +72,8 @@ test.describe('Spielfeld', () => {
     await expect(sign(page)).toHaveAttribute('aria-live', 'polite');
     await expect(sign(page)).toHaveClass('sign');
     await expect(s.getByRole('button', { name: 'Zug zurück' })).toBeVisible();
-    // Unten nur „Zug zurück“; Tipp gibt es im Menü und mit H (Platz auf dem Handy)
-    await expect(s.locator('.gacts .btn')).toHaveText(['Zug zurück']);
+    // Unten nur „Zug zurück“ und „Menü“ (beim Daumen, Issue #15); Tipp gibt es im Menü und mit H (Platz auf dem Handy)
+    await expect(s.locator('.gacts .btn')).toHaveText(['Zug zurück', 'Menü']);
     await expect(s.getByRole('button', { name: 'Tipp' })).toHaveCount(0);
     await expect(s.getByRole('link', { name: 'Weiter zu Lektion 2' })).toBeHidden();
     await expect(s.getByRole('button', { name: 'Nochmal' })).toBeHidden();

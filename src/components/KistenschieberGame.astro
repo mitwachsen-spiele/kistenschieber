@@ -233,9 +233,6 @@ const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
     <div class="game">
       <div class="gin">
         <div class="gbar">
-          <button class="btn gbtn" type="button" aria-haspopup="dialog" data-ks="menu">
-            {GAME_BUTTONS.menu}
-          </button>
           <h2 class="gtitle" id="game-title" data-ks="title">
             {lessonName(first)}
           </h2>
@@ -264,6 +261,9 @@ const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
           <div class="gacts">
             <button class="btn big" type="button" data-ks="undo">
               {GAME_BUTTONS.undo}
+            </button>
+            <button class="btn big" type="button" aria-haspopup="dialog" data-ks="menu">
+              {GAME_BUTTONS.menu}
             </button>
           </div>
           <div class="pad" role="group" aria-label={PAD.group}>

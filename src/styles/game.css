@@ -659,18 +659,17 @@ html:has(body.playing) {
   grid-template-areas: 'bar' 'field' 'ctl';
   --msg-room: 8.5rem;
   gap: 10px;
-  padding: 10px 12px 12px;
+  padding: 8px 8px 12px;
 }
+/* Kopf: Titel und Zähler. Das Menü liegt unten bei „Zug zurück“, wo der Daumen ist (Issue #15) */
 .gbar {
   grid-area: bar;
   display: flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
-}
-.btn.gbtn {
-  min-height: 48px;
-  padding: 8px 18px;
+  min-height: 34px;
+  padding-inline: 4px;
 }
 .screen .gtitle {
   flex: 1;
@@ -696,14 +695,15 @@ html:has(body.playing) {
   box-shadow: var(--ks-px);
   white-space: nowrap;
 }
-/* Hochkant ist das Feld meist durch die Breite begrenzt: Die Insel sitzt unten, direkt über den Knöpfen, der freie
-   Platz darüber ist Himmel. Oben bleibt immer Platz für Schild und Knöpfe nach dem Sieg (--msg-room, ks-game.ts zieht
-   ihn von der Höhe der Insel ab), damit eine Meldung nie auf der Insel liegt. Quer steht die Insel mittig */
+/* Hochkant ist das Feld meist durch die Breite begrenzt. Oben bleibt immer Platz für Schild und Knöpfe nach dem Sieg
+   (--msg-room, ks-game.ts zieht ihn von der Höhe der Insel ab), damit eine Meldung nie auf der Insel liegt; im Rest
+   steht die Insel mittig, der übrige Himmel verteilt sich also über und unter ihr statt als Band über ihr. Quer steht
+   die Insel mittig im ganzen Feld */
 .field {
   grid-area: field;
   min-height: 0;
   display: grid;
-  place-items: end center;
+  place-items: center;
   overflow: hidden;
   padding-top: var(--msg-room);
 }
@@ -715,14 +715,15 @@ html:has(body.playing) {
   image-rendering: pixelated;
 }
 /* Schild und Knöpfe nach dem Sieg nehmen dem Feld keinen Platz und lassen es nie springen. Hochkant liegen sie im
-   Himmel über der Insel, unten bündig an ihr (--board-h ist die Höhe der Insel, ks-game.ts); quer in der Spalte neben
+   Himmel über der Insel, unten bündig an ihr (--board-h ist die Höhe der Insel, ks-game.ts; die Insel steht mittig
+   unter --msg-room, ihre Oberkante also bei (100 % + --msg-room − --board-h) / 2); quer in der Spalte neben
    dem Feld über „Zug zurück“. Leer sind sie unsichtbar; das Schild bleibt als Live-Region im Baum (aria-live sagt die
    nächste Meldung an). Tippen geht durch die leere Fläche hindurch */
 .gmsg {
   grid-area: field;
   align-self: start;
   z-index: 1;
-  height: calc(100% - var(--board-h, 0px));
+  height: calc((100% + var(--msg-room) - var(--board-h, 0px)) / 2);
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -779,6 +780,12 @@ html:has(body.playing) {
 .gin.left .gctl {
   flex-direction: row-reverse;
 }
+/* Mit Steuerkreuz stehen „Zug zurück“ (oben, am häufigsten) und „Menü“ (unten, in der Ecke) dicht beim Steuerkreuz
+   statt in der fernen Ecke; 24 px Abstand, damit ein Tipp auf „Zug zurück“ nicht auf einem Pfeil landet */
+html.touch .gctl {
+  justify-content: flex-end;
+  gap: 24px;
+}
 .gacts {
   display: grid;
   gap: 10px;
@@ -787,23 +794,48 @@ html:has(body.playing) {
   min-width: 112px;
   min-height: 56px;
 }
-/* Quer: rechts (bzw. links) eine Spalte mit Schild und Knöpfen oben, „Zug zurück“ und Steuerkreuz unten nebeneinander.
-   Die Spalte ist so breit wie Steuerkreuz und „Zug zurück“, mindestens 15rem; das Schild trägt nicht zur Breite bei
-   (contain), das Feld ändert sich also nie, wenn eine Meldung kommt. Nach dem Sieg geht kein Schritt mehr: Das
-   Steuerkreuz macht dann in der Höhe Platz für „Weiter“ und „Nochmal“ */
+/* Ohne Steuerkreuz (Tastatur, Maus) stehen „Zug zurück“ und „Menü“ nebeneinander */
+html:not(.touch) .gacts {
+  grid-auto-flow: column;
+}
+/* Quer: Das Feld bekommt die ganze Höhe, rechts (bzw. links, Hand) eine Spalte mit Titel und Zähler oben, darunter
+   Schild und Knöpfe, unten „Zug zurück“ und „Menü“ übereinander neben dem Steuerkreuz am Rand (Daumen). Die Spalte ist
+   so breit wie Knöpfe und Steuerkreuz, mindestens 15rem; Kopf und Schild tragen nicht zur Breite bei (contain), das
+   Feld ändert sich also nie, wenn eine Meldung kommt. Nach dem Sieg geht kein Schritt mehr: Das Steuerkreuz macht dann
+   in der Höhe Platz für „Weiter“ und „Nochmal“ */
 @container (min-aspect-ratio: 6/5) {
   .gin {
     --msg-room: 0px;
     grid-template-columns: minmax(0, 1fr) minmax(15rem, auto);
     grid-template-rows: auto minmax(0, 1fr) auto;
-    grid-template-areas: 'bar bar' 'field msg' 'field ctl';
+    grid-template-areas: 'field bar' 'field msg' 'field ctl';
+    padding: 8px;
   }
   .field {
     place-items: center;
   }
   .gin.left {
     grid-template-columns: minmax(15rem, auto) minmax(0, 1fr);
-    grid-template-areas: 'bar bar' 'msg field' 'ctl field';
+    grid-template-areas: 'bar field' 'msg field' 'ctl field';
+  }
+  /* Ohne Steuerkreuz (Schreibtisch) ist die Spalte etwas breiter, damit der Titel Platz hat */
+  html:not(.touch) .gin {
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, auto);
+  }
+  html:not(.touch) .gin.left {
+    grid-template-columns: minmax(18rem, auto) minmax(0, 1fr);
+  }
+  /* Titel über dem Zähler, linksbündig über die ganze Spalte: bleibt in normaler Größe meist einzeilig */
+  .gbar {
+    contain: inline-size;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding-inline: 0;
+  }
+  .screen .gtitle {
+    flex: none;
+    width: 100%;
   }
   .gmsg {
     grid-area: msg;
@@ -894,10 +926,10 @@ html:has(body.playing) {
 @container (max-height: 600px) {
   .gin {
     gap: 6px;
-    padding: 6px 10px 8px;
+    padding: 6px 8px 8px;
   }
   .gacts {
-    grid-auto-flow: column;
+    gap: 8px;
   }
   .gacts .btn {
     min-width: 0;

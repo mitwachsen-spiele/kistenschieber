@@ -357,6 +357,8 @@ export class GameScreen {
       // Hochkant hält das Feld oben Platz für Schild und Knöpfe frei (padding-top, game.css)
       maxH: Math.max(140, f.clientHeight - parseFloat(getComputedStyle(f).paddingTop) - 6),
       noRing: f.clientWidth < NO_RING_BELOW,
+      // Die Insel nutzt die ganze Breite des Felds (Abstände macht das Raster drumherum)
+      inset: 0,
       pad: 4,
     }).hits;
     // Schild und Knöpfe sitzen hochkant direkt über der Insel
