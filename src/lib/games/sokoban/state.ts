@@ -155,6 +155,17 @@ export function options(g: Game, id: number): Dir[] {
   });
 }
 
+/**
+ * Richtungen der Pfeile an Kiste id: alle erlaubten (options); gilt der Tipp dieser Kiste, nur seine eine Richtung
+ * (über den Namen verglichen). Zeichnen (scene.ts) und Antippen (ks-input.ts) nutzen dieselbe Liste, damit kein
+ * verborgener Pfeil schiebt
+ */
+export function arrowDirs(g: Game, id: number): Dir[] {
+  const all = options(g, id);
+  const h = g.hint?.box === id ? g.hint.d : null;
+  return h === null ? all : all.filter((d) => dirKey(d) === h);
+}
+
 /** Ein Schritt ohne Animation: laufen, schieben, gegen die Wand (bump) oder Kiste ohne Platz dahinter (blocked) */
 export function step(g: Game, d: Dir): { readonly game: Game; readonly move: Move } {
   const L = g.L;

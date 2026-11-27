@@ -38,6 +38,10 @@ export const GOAL: readonly { readonly half: number; readonly col: string; reado
 export const MARK = { sel: '#f0a531', hint: '#2ec4b6', stuck: '#e0442f' } as const;
 /** Pfeile: Tipp, wählbar, führt in eine Sackgasse */
 export const ARROW_FILL = { hint: '#2ec4b6', sel: '#f0a531', dead: '#a3aab3' } as const;
+/** Größe der Pfeile (1 = Feld-Pfeil des Entwurfs): Der Tipp steht allein und muss auch auf dem Handy auffallen */
+export const ARROW_SCALE = { hint: 1.5, sel: 1, dead: 1 } as const;
+/** Heller Saum um den Tipp-Pfeil, damit er sich vom gelb-schwarzen Ziel abhebt */
+export const ARROW_HALO = 'rgba(255,255,255,.9)';
 
 /** Linienbreiten in px bei Maßstab 1: Markierung, Pfeil-Kontur, helle Oberkanten */
 export const LINE = { mark: 3.2, arrow: 2.2, edge: 1.1 } as const;

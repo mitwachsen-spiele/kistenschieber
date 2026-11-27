@@ -14,7 +14,7 @@ export const SIGN = {
   restarted: 'Neu gestartet. Mit „Zug zurück“ kommst du zum alten Stand.',
   tipDead: 'Von hier aus geht es nicht mehr. Nimm mit „Zug zurück“ ein paar Schritte zurück.',
   tipHard: 'Das ist zu verzwickt für einen schnellen Tipp.',
-  tip: 'Tipp: Diese Kiste in Richtung des türkisen Pfeils schieben. Tipp auf den Pfeil, dann läuft die Figur hin.',
+  tip: 'Tipp: Diese Kiste in Pfeilrichtung schieben.',
   noOptions: 'Diese Kiste lässt sich gerade nirgendwohin schieben.',
   showing: 'So geht es: Schau zu. Wenn du selbst weitermachen willst, tipp aufs Feld oder drück eine Taste.',
   shownWin: 'So geht es. Jetzt du? „Nochmal“ startet die Lektion neu.',
@@ -61,7 +61,6 @@ export const GAME_BUTTONS = {
   again: 'Nochmal',
   offer: 'Zu knifflig? Überspringen',
   undo: 'Zug zurück',
-  tip: 'Tipp',
 } as const;
 
 /** Menü im Spiel (Dialog): Einträge in der Reihenfolge des Entwurfs und die Notiz darunter */

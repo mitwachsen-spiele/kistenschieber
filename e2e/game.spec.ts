@@ -16,6 +16,7 @@ import {
   pixels,
   playLurd,
   render,
+  spot,
   stored,
   wakeLog,
   watchErrors,
@@ -29,6 +30,7 @@ const lesson = (n: number) => LESSONS[n - 1]!;
 const spiel = (page: Page) => page.locator('ks-kistenschieber > section#spiel');
 const sign = (page: Page) => page.locator('[data-ks="sign"]');
 const count = (page: Page) => page.locator('[data-ks="count"]');
+const dialog = (page: Page) => page.locator('#spiel dialog.menu');
 
 /** Lektionen 1 bis n−1 als übersprungen: Lektion n ist frei */
 function upTo(n: number): Record<string, unknown> {
@@ -67,7 +69,9 @@ test.describe('Spielfeld', () => {
     await expect(sign(page)).toHaveAttribute('aria-live', 'polite');
     await expect(sign(page)).toHaveClass('sign');
     await expect(s.getByRole('button', { name: 'Zug zurück' })).toBeVisible();
-    await expect(s.getByRole('button', { name: 'Tipp' })).toBeVisible();
+    // Unten nur „Zug zurück“; Tipp gibt es im Menü und mit H (Platz auf dem Handy)
+    await expect(s.locator('.gacts .btn')).toHaveText(['Zug zurück']);
+    await expect(s.getByRole('button', { name: 'Tipp' })).toHaveCount(0);
     await expect(s.getByRole('link', { name: 'Weiter zu Lektion 2' })).toBeHidden();
     await expect(s.getByRole('button', { name: 'Nochmal' })).toBeHidden();
     await expect(s.getByRole('button', { name: 'Zu knifflig? Überspringen' })).toBeHidden();
@@ -359,8 +363,6 @@ test.describe('Spielfeld im ganzen Bildschirm', () => {
 });
 
 test.describe('Menü', () => {
-  const dialog = (page: Page) => page.locator('#spiel dialog.menu');
-
   test('M öffnet es: Titel, acht Einträge und die Notiz; Esc schließt; „Weiterspielen“ fokussiert das Feld', async ({
     page,
   }) => {
@@ -461,16 +463,43 @@ test.describe('Menü', () => {
 test.describe('Tipp und Lösung', () => {
   const turquoise = [0x2e, 0xc4, 0xb6] as const;
 
-  test('Tipp am Start von Lektion 2: Kiste gewählt, türkiser Pfeil, Tipp-Text', async ({ page }) => {
+  test('Tipp (Menü) am Start von Lektion 2: Kiste gewählt, türkiser Pfeil, Tipp-Text', async ({ page }) => {
     await openGame(page, { hash: '#lektion-2', store: { 'skip.e1': true } });
     expect(await colourCount(page, FIELD, turquoise)).toBe(0);
-    await spiel(page).getByRole('button', { name: 'Tipp' }).click();
+    await page.keyboard.press('m');
+    await dialog(page).getByRole('button', { name: 'Tipp' }).click();
+    await expect(dialog(page)).toBeHidden();
     await render(page);
     await expect(sign(page)).toHaveText(SIGN.tip);
     // türkiser Pfeil (Tipp) und goldener Rand der gewählten Kiste
     expect(await colourCount(page, FIELD, turquoise)).toBeGreaterThan(50);
     expect(await colourCount(page, FIELD, [0xf0, 0xa5, 0x31])).toBeGreaterThan(20);
     expect(ARROW_FILL.hint).toBe('#2ec4b6');
+  });
+
+  test('Tipp am Start von Lektion 6 (Issue #14): nur der türkise Pfeil, kein grauer an die Wand', async ({ page }) => {
+    await openGame(page, { hash: '#lektion-6', store: upTo(6) });
+    const grey = [0xa3, 0xaa, 0xb3] as const;
+    expect(ARROW_FILL.dead).toBe('#a3aab3');
+    const before = await colourCount(page, FIELD, grey);
+    // Von Hand gewählt: hoch (grau, an die Wand) und runter (gold)
+    const box = await spot(page, { crate: 0 });
+    await page.mouse.click(box.x, box.y);
+    await render(page);
+    expect(await colourCount(page, FIELD, grey)).toBeGreaterThan(before + 50);
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('h');
+    await render(page);
+    await expect(sign(page)).toHaveText(SIGN.tip);
+    expect(await colourCount(page, FIELD, turquoise)).toBeGreaterThan(50);
+    const withTip = await colourCount(page, FIELD, grey);
+    // Esc nimmt den Tipp weg, das Schild bleibt (gleiche Größe des Felds): Grau ändert sich kaum, es gab keinen grauen
+    // Pfeil (der brächte über 50 Pixel; der große Tipp-Pfeil verdeckt nur einzelne graue Pixel des Felds)
+    await page.keyboard.press('Escape');
+    await render(page);
+    await expect(sign(page)).toHaveText(SIGN.tip);
+    expect(await colourCount(page, FIELD, turquoise)).toBe(0);
+    expect(Math.abs((await colourCount(page, FIELD, grey)) - withTip)).toBeLessThan(10);
   });
 
   test('Tipp aus der Sackgasse (H): „Von hier aus geht es nicht mehr. …“ als Warnung', async ({ page }) => {

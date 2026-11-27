@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { makeCamera, screenDirs } from '../../lib/games/oblique/camera';
 import type { Picked } from '../../lib/games/oblique/geometry';
-import { DIRS, parseLevel } from '../../lib/games/sokoban/level';
+import { DIRS, nb, parseLevel } from '../../lib/games/sokoban/level';
 import { type Game, busy, key, newGame, showSolution, tick, tip } from '../../lib/games/sokoban/state';
+import { LESSONS } from '../../data/games/lessons';
 import { type KeyInfo, SWIPE_PX, keepsKey, keyAction, padAngles, swipeDir, tapAt } from './ks-input';
 
 const k = (key: string, more: Partial<KeyInfo> = {}): KeyInfo => ({
@@ -179,6 +180,25 @@ describe('Antippen (tapAt)', () => {
     expect(tapAt(hinted, floor(0, 0), 0)).toMatchObject({ sel: null, hint: null, moves: 0 });
     const plain = newGame(L1);
     expect(tapAt(plain, null, 0)).toBe(plain);
+  });
+
+  // Issue #14, Lektion 6 am Start: Der Tipp zeigt nur „runter“. Das Feld darüber (hoch = Kiste an die Wand) ist kein
+  // gezeigter Pfeil mehr, also darf ein Tippen dort auch nicht schieben, sondern die Figur läuft hin.
+  it('mit Tipp schiebt nur sein Pfeil: das verborgene Pfeilfeld ist ein normales Bodenfeld', () => {
+    const L6 = parseLevel(LESSONS[5]!.xsb);
+    const hinted = tip(newGame(L6));
+    expect(hinted.hint?.d).toBe('down');
+    const id = hinted.hint!.box;
+    const box = hinted.boxes[id]!;
+    const above = nb(L6, box, DIRS.up);
+    const g = settle(tapAt(hinted, floor(Math.floor(above / L6.W), above % L6.W), (t += 1)));
+    expect(g).toMatchObject({ pushes: 0, p: above, sel: null, hint: null });
+    expect(g.boxes[id]).toBe(box);
+    // das Pfeilfeld des Tipps schiebt weiter
+    const below = nb(L6, box, DIRS.down);
+    const pushed = settle(tapAt(hinted, floor(Math.floor(below / L6.W), below % L6.W), (t += 1)));
+    expect(pushed).toMatchObject({ pushes: 1 });
+    expect(pushed.boxes[id]).toBe(below);
   });
 
   it('ein anderes Feld bei gewählter Kiste ist kein Pfeil: dorthin laufen', () => {

@@ -75,6 +75,7 @@ describe('Schild', () => {
     expect(SIGN.unsolvable).toBe('So geht es nicht mehr auf. Mit „Zug zurück“ ein paar Schritte zurück.');
     expect(SIGN.stuck).toBe('Diese Kiste kommt hier nicht mehr weg. Mit „Zug zurück“ geht es weiter.');
     expect(SIGN.placed).toBe('Die Kiste steht.');
+    expect(SIGN.tip).toBe('Tipp: Diese Kiste in Pfeilrichtung schieben.');
     expect(SIGN.shownWin).toBe('So geht es. Jetzt du? „Nochmal“ startet die Lektion neu.');
   });
 });
@@ -98,6 +99,8 @@ describe('Zähler, Titel, Knöpfe', () => {
     expect(nextText(15)).toBe('Zur Levelwahl');
     expect([isFinale(14), isFinale(15)]).toEqual([false, true]);
     expect(GAME_BUTTONS).toMatchObject({ again: 'Nochmal', offer: 'Zu knifflig? Überspringen' });
+    // Tipp gibt es nur noch im Menü und mit H: unten bleibt nur „Zug zurück“ (Platz auf dem Handy)
+    expect(Object.keys(GAME_BUTTONS)).toEqual(['menu', 'again', 'offer', 'undo']);
   });
 });
 

@@ -10,7 +10,7 @@ Gebaut mit [Astro](https://astro.build), ausgeliefert als statische Seite über 
 
 - **Ziel:** alle Kisten auf die gelben Felder. Die Figur schiebt, sie zieht nie.
 - **Bedienen:** Feld antippen, und die Figur läuft hin; wischen für einen Schritt; eine Kiste antippen zeigt Pfeile, ein Pfeil schiebt sie. Auf Handy und Tablet gibt es dazu ein Steuerkreuz (Seite wählbar). Am Computer: Pfeiltasten oder WASD, Z zurück, R neu, H Tipp, M oder Esc Menü.
-- **Hilfen:** „Zug zurück“ geht immer, auch nach einem Neustart. Eine Kiste, die kein Ziel mehr erreichen kann (Ecke oder Wand ohne Ziel), bekommt einen roten Rand. „Tipp“ zeigt die nächste Kiste und Richtung, „Lösung zeigen“ spielt die Lektion vor. Nach drei Rückschlägen bietet das Spiel das Überspringen an.
+- **Hilfen:** „Zug zurück“ geht immer, auch nach einem Neustart. Eine Kiste, die kein Ziel mehr erreichen kann (Ecke oder Wand ohne Ziel), bekommt einen roten Rand. „Tipp“ (im Menü oder H) zeigt die nächste Kiste und mit einem Pfeil ihre Richtung, „Lösung zeigen“ spielt die Lektion vor. Nach drei Rückschlägen bietet das Spiel das Überspringen an.
 - **Fortschritt:** Lektionen werden der Reihe nach frei. Geschafft, übersprungen oder mit Lösung gesehen macht die nächste frei; die Levelwahl zeigt, was noch offen ist.
 
 Die Regeln im Einzelnen und die Tests dazu stehen in der Spec [docs/specs/kistenschieber.md](docs/specs/kistenschieber.md).

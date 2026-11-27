@@ -3,7 +3,7 @@
 import type { Area } from '../oblique/camera';
 import { FWD, type Part, type Pose } from '../oblique/models';
 import { type CellType, type Dir, type Facing, type Level, cellType, nb } from './level';
-import { type Game, dirKey, options } from './state';
+import { type Game, arrowDirs } from './state';
 
 export type Mark = 'sel' | 'hint' | 'stuck';
 export type ArrowKind = 'hint' | 'sel' | 'dead';
@@ -190,16 +190,18 @@ function crates(g: Game, now: number): WorldCrate[] {
 
 /**
  * Pfeile nur bei ausgewählter Kiste, ohne Animation und vor dem Sieg: je mögliche Richtung auf dem Feld, in das die
- * Kiste käme. Tipp-Richtung (verglichen über den Namen) türkis, Sackgasse grau, sonst gold.
+ * Kiste käme, Sackgasse grau, sonst gold. Gilt der Tipp dieser Kiste, nur sein einer türkiser Pfeil (Richtung über
+ * den Namen verglichen, arrowDirs in state.ts): Mehrere Pfeile, nur farblich unterschieden, lasen sich auf dem Handy wie „hoch oder runter“.
  */
 function arrows(g: Game): WorldArrow[] {
   if (g.sel === null || g.a || g.won) return [];
   const k = g.boxes[g.sel];
   if (k === undefined) return [];
-  return options(g, g.sel).map((d) => {
+  const hinted = g.hint?.box === g.sel;
+  return arrowDirs(g, g.sel).map((d) => {
     const t = nb(g.L, k, d);
     const [c, r] = xy(g.L, t);
-    const kind: ArrowKind = g.hint?.d === dirKey(d) ? 'hint' : !g.L.goals.has(t) && !g.L.live.has(t) ? 'dead' : 'sel';
+    const kind: ArrowKind = hinted ? 'hint' : !g.L.goals.has(t) && !g.L.live.has(t) ? 'dead' : 'sel';
     return { r, c, d, kind };
   });
 }

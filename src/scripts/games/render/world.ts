@@ -15,7 +15,21 @@ import {
 import { type Cuboid, cuboidFaces, humanoid, modelCuboids } from '../../../lib/games/oblique/models';
 import { D4, type CellType } from '../../../lib/games/sokoban/level';
 import type { World } from '../../../lib/games/sokoban/scene';
-import { ARROW_FILL, EDGE, FRAUKE, GOAL, INK, K, LINE, MARK, RING_Z, SHADOW, WH } from '../../../data/games/kaje';
+import {
+  ARROW_FILL,
+  ARROW_HALO,
+  ARROW_SCALE,
+  EDGE,
+  FRAUKE,
+  GOAL,
+  INK,
+  K,
+  LINE,
+  MARK,
+  RING_Z,
+  SHADOW,
+  WH,
+} from '../../../data/games/kaje';
 import { type Blocks, blocksFor, drawBlock } from './blocks';
 
 export interface RenderOptions {
@@ -226,7 +240,11 @@ export function renderWorld(cv: HTMLCanvasElement, W: World, cam: Camera, opt: R
   const items = upright(V, W, im, cells, hits.objs).sort((a, b) => a.k - b.k);
   for (const it of items) it.draw(x);
   // Pfeile liegen obenauf, damit Figur und Mauern sie nie verdecken
-  for (const a of W.arrows)
-    poly(x, flatPts(V, arrowPoly(a.r, a.c, a.d), 0.03), ARROW_FILL[a.kind], INK, LINE.arrow * V.s);
+  // Der Tipp-Pfeil ist größer und hat einen hellen Saum, damit er allein auch auf dem Handy auffällt
+  for (const a of W.arrows) {
+    const pts = flatPts(V, arrowPoly(a.r, a.c, a.d, ARROW_SCALE[a.kind]), 0.03);
+    if (a.kind === 'hint') poly(x, pts, null, ARROW_HALO, LINE.arrow * 3 * V.s);
+    poly(x, pts, ARROW_FILL[a.kind], INK, LINE.arrow * V.s);
+  }
   return { view: V, hits };
 }

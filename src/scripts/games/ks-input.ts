@@ -8,7 +8,7 @@ import type { ScreenDir } from '../../lib/games/oblique/camera';
 import type { Picked } from '../../lib/games/oblique/geometry';
 import { type DirKey, nb } from '../../lib/games/sokoban/level';
 import { findPath } from '../../lib/games/sokoban/solver';
-import { type Game, act, boxSet, options, pushVia, stopAuto, toggleSelect } from '../../lib/games/sokoban/state';
+import { type Game, act, arrowDirs, boxSet, pushVia, stopAuto, toggleSelect } from '../../lib/games/sokoban/state';
 
 type Simple = 'undo' | 'restart' | 'tip' | 'menu' | 'escape' | 'next' | 'other';
 
@@ -90,8 +90,8 @@ export function padAngles(dirs: readonly ScreenDir[]): Record<DirKey, number> {
 
 /**
  * Tippen aufs Feld (wie im Entwurf): beendet nur das Vorspielen; während einer Animation und nach dem Sieg nichts.
- * Daneben hebt die Auswahl auf. Eine Kiste schaltet ihre Auswahl um. Boden oder Figur: Ist es das Pfeilfeld der
- * gewählten Kiste, läuft die Figur hin und schiebt; sonst läuft sie als eine Aktion dorthin. Unerreichbar hebt die
+ * Daneben hebt die Auswahl auf. Eine Kiste schaltet ihre Auswahl um. Boden oder Figur: Ist es ein gezeigtes Pfeilfeld
+ * der gewählten Kiste (mit Tipp nur dessen eines, arrowDirs), läuft die Figur hin und schiebt; sonst läuft sie als eine Aktion dorthin. Unerreichbar hebt die
  * Auswahl auf
  */
 export function tapAt(g: Game, hit: Picked | null, now: number): Game {
@@ -103,7 +103,7 @@ export function tapAt(g: Game, hit: Picked | null, now: number): Game {
   const k = hit.type === 'fig' ? g.p : hit.r * g.L.W + hit.c;
   if (g.sel !== null) {
     const box = g.boxes[g.sel];
-    const d = box === undefined ? undefined : options(g, g.sel).find((o) => nb(g.L, box, o) === k);
+    const d = box === undefined ? undefined : arrowDirs(g, g.sel).find((o) => nb(g.L, box, o) === k);
     if (d) return pushVia(g, g.sel, d, now) ?? g;
   }
   const path = findPath(g.L, boxSet(g), g.p, k);

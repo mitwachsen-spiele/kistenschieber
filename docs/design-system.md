@@ -83,7 +83,7 @@ Jeder Zustand hat eine eigene Form, nicht nur eine Farbe (Haken für Menschen mi
 | Kiste | Holz mit blauem Rahmen, Schatten in drei Lagen |
 | Kiste auf dem Ziel | grüner Rahmen, Haken auf dem Deckel; wird erst nach dem Schieben grün |
 | Angetippt | goldener Rand #f0a531, goldene Pfeile auf den Feldern dahinter |
-| Tipp | türkiser Rand und Pfeil #2ec4b6 |
+| Tipp | türkiser Rand und nur ein Pfeil #2ec4b6, 1,5-mal so groß mit hellem Saum (keine weiteren Richtungen) |
 | Pfeil in eine Sackgasse | grau #a3aab3 |
 | Festsitzend | roter Rand #e0442f |
 

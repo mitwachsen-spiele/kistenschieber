@@ -125,14 +125,23 @@ describe('gameWorld', () => {
     ]);
   });
 
-  it('die Tipp-Richtung wird über den Namen erkannt und türkis', () => {
+  it('mit Tipp nur der eine türkise Pfeil, keine anderen Richtungen (über den Namen erkannt)', () => {
     const t = tip(newGame(L1));
     expect(t.hint).toEqual({ box: 0, d: 'left' });
-    const arrows = gameWorld(t, 0).arrows;
-    expect(arrows.map((a) => a.kind)).toEqual(['hint', 'sel']);
-    // eine Kopie der Richtung (andere Array-Identität) ändert nichts
-    const copy = { ...t, hint: { box: 0, d: 'left' as const } };
-    expect(gameWorld(copy, 0).arrows[0]!.kind).toBe('hint');
+    expect(gameWorld(t, 0).arrows).toEqual([{ r: 3, c: 4, d: DIRS.left, kind: 'hint' }]);
+    // Richtung über den Namen: ein neues Objekt mit demselben Namen zeigt denselben Pfeil, ein anderer Name nur dessen
+    const same = { ...t, hint: { box: 0, d: 'left' as const } };
+    expect(gameWorld(same, 0).arrows).toEqual([{ r: 3, c: 4, d: DIRS.left, kind: 'hint' }]);
+    const other = { ...t, hint: { box: 0, d: 'right' as const } };
+    expect(gameWorld(other, 0).arrows).toEqual([{ r: 3, c: 6, d: DIRS.right, kind: 'hint' }]);
+  });
+
+  it('Tipp für eine andere Kiste oder aufgehoben: wieder alle Richtungen in Gold', () => {
+    const t = tip(newGame(L1));
+    expect(gameWorld({ ...t, hint: { box: 1, d: 'left' } }, 0).arrows.map((a) => a.kind)).toEqual(['sel', 'sel']);
+    const again = toggleSelect(toggleSelect(t, 0), 0);
+    expect(again.hint).toBeNull();
+    expect(gameWorld(again, 0).arrows.map((a) => a.kind)).toEqual(['sel', 'sel']);
   });
 
   it('ein Pfeil in eine Sackgasse ist grau (dead)', () => {

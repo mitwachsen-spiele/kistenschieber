@@ -85,7 +85,7 @@ for (const colorScheme of ['light', 'dark'] as const)
 
     test('Barrierefrei: Spielfeld mit Tipp', async ({ page }) => {
       await openGame(page, { hash: '#lektion-2', store: { 'skip.e1': true } });
-      await page.getByRole('button', { name: 'Tipp' }).click();
+      await page.keyboard.press('h');
       await expect(page.locator('[data-ks="sign"]')).toContainText('Tipp:');
       expect(await violations(page)).toEqual([]);
     });

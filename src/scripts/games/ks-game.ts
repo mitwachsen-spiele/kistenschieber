@@ -104,7 +104,6 @@ export class GameScreen {
     );
     const on = (sel: string, fn: () => void) => need(root, sel).addEventListener('click', fn, { signal });
     on('[data-ks="undo"]', () => this.apply(undo(this.g)));
-    on('[data-ks="tip"]', () => this.apply(tip(this.g)));
     on('[data-ks="again"]', () => this.apply(again(this.g)));
     on('[data-ks="offer"]', () => this.skip());
     on('[data-ks="menu"]', () => this.openMenu());
