@@ -18,6 +18,7 @@ export default defineConfig({
         'src/data/site.ts',
         'src/data/games/**/*.ts',
         'src/scripts/games/ks-save.ts',
+        'src/scripts/games/ks-router.ts',
         'scripts/{bundles,dist}.ts',
       ],
       reporter: [['text', { skipFull: true }], 'text-summary'],

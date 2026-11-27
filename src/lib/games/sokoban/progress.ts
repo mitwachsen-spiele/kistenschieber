@@ -85,3 +85,15 @@ export function markSkipped(kv: ProgressKV, n: number): boolean {
 export function markShown(kv: ProgressKV, n: number): void {
   kv.setFlag('shown', n);
 }
+
+/** Die Einführung ist durch, sobald ihre letzte Lektion nicht mehr offen ist (geschafft, gesehen oder übersprungen) */
+export const introDone = (kv: ProgressKV, count: number): boolean => stateOf(kv, count) !== 'open';
+
+/**
+ * Schon angefangen? Dann heißt der große Knopf „Weiterspielen“: Eine Lektion ist nicht mehr offen, oder es geht bei
+ * einer späteren als der ersten weiter. Sonst „Spielen“
+ */
+export function started(kv: ProgressKV, count: number): boolean {
+  for (let n = 1; n <= count; n++) if (stateOf(kv, n) !== 'open') return true;
+  return lastRef(kv, count) > 1;
+}

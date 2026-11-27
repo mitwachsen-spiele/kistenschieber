@@ -26,4 +26,62 @@
   /* Pixel-Rahmen: vier Schatten statt border, dadurch fehlen die Eckpixel */
   --px-4: 0 -4px 0 0 var(--ink), 0 4px 0 0 var(--ink), -4px 0 0 0 var(--ink), 4px 0 0 0 var(--ink);
   --px-3: 0 -3px 0 0 var(--ink), 0 3px 0 0 var(--ink), -3px 0 0 0 var(--ink), 3px 0 0 0 var(--ink);
+
+  /* Spiel „An der Kaje“ (Entwurf Kistenschieber). Hell und dunkel: Die Werte unten wechseln mit dem Farbschema, die
+     Grundfarben oben nicht. Knöpfe, Schild und Zähler nutzen --paper und --ink und bleiben so auch dunkel hell. */
+  --water-1: #8dd0ee; /* Wasserblau: theme-color, App-Symbol */
+  --water-2: #3f8fc2;
+  --sky: #8dd0ee; /* Hintergrund der Spielseite */
+  --sky-deep: #79c7ea; /* Szenen: Verlauf von oben … */
+  --sky-low: #a6dbf2; /* … nach unten */
+  --text: #1d2838;
+  --card: #fffdf7; /* Flächen: Einstellungen, Lektionskarten */
+  --soft: #4b5563; /* Unterzeilen und Notizen auf --card, --wood und --slot */
+  --line: #1d2838; /* Pixel-Rahmen im Spiel */
+  --wood: #f3ead6; /* Hinweise, Menü */
+  --slot: #e2d5ba; /* Fächer: Regler, Pillen */
+  --frame: #b3a385;
+  --gold-edge: #b46a0c; /* Regler, Kanten auf Gold */
+  --on-gold: #1d2838;
+  --crate: #c58b4d;
+  --crate-dark: #6e4526;
+  --ok: #2b7a42; /* geschafft */
+  --skip: #a65f08; /* übersprungen */
+  --info: #2c5f8c; /* mit Lösung gesehen */
+  --ks-px: 0 -3px 0 0 var(--line), 0 3px 0 0 var(--line), -3px 0 0 0 var(--line), 3px 0 0 0 var(--line);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --sky: #13213a;
+    --sky-deep: #0f1a2e;
+    --sky-low: #1a2b48;
+    --text: #eef1f6;
+    --card: #1d2533;
+    --soft: #a9b4c4;
+    --line: #0a0f18;
+    --wood: #1d2533;
+    --slot: #252f40;
+    --frame: #46536a;
+    --gold-edge: #ffc061;
+    --ok: #7fd08f;
+    --skip: #ffc061;
+    --info: #8cc4f0;
+  }
+}
+:root[data-theme='dark'] {
+  --sky: #13213a;
+  --sky-deep: #0f1a2e;
+  --sky-low: #1a2b48;
+  --text: #eef1f6;
+  --card: #1d2533;
+  --soft: #a9b4c4;
+  --line: #0a0f18;
+  --wood: #1d2533;
+  --slot: #252f40;
+  --frame: #46536a;
+  --gold-edge: #ffc061;
+  --ok: #7fd08f;
+  --skip: #ffc061;
+  --info: #8cc4f0;
 }

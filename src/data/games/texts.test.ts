@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { LESSONS } from './lessons';
-import { FINALE, GAME_BUTTONS, SIGN, countText, isFinale, lessonName, nextText, signText, winText } from './texts';
+import {
+  FINALE,
+  GAME_BUTTONS,
+  SIGN,
+  cardTag,
+  continueText,
+  countText,
+  isFinale,
+  lessonName,
+  nextText,
+  sceneLabel,
+  signText,
+  startStatus,
+  winText,
+} from './texts';
 
 const lesson = (n: number) => LESSONS[n - 1]!;
 
@@ -71,5 +85,24 @@ describe('Zähler, Titel, Knöpfe', () => {
     expect(nextText(15)).toBe('Zur Levelwahl');
     expect([isFinale(14), isFinale(15)]).toEqual([false, true]);
     expect(GAME_BUTTONS).toMatchObject({ again: 'Nochmal', offer: 'Zu knifflig? Überspringen' });
+  });
+});
+
+describe('Startbildschirm und Lektionskarten', () => {
+  it('Zeile unter dem Titel: Lektionen gezählt, nach der Einführung kommen die Level bald', () => {
+    expect(startStatus(0, 15, false)).toBe('Einführung: 0 von 15 Lektionen geschafft');
+    expect(startStatus(4, 15, false)).toBe('Einführung: 4 von 15 Lektionen geschafft');
+    expect(startStatus(12, 15, true)).toBe('Einführung geschafft. Die Level kommen bald.');
+  });
+
+  it('großer Knopf: „Spielen“ oder „Weiterspielen: Lektion N“', () => {
+    expect(continueText(false, 1)).toBe('Spielen');
+    expect(continueText(true, 2)).toBe('Weiterspielen: Lektion 2');
+  });
+
+  it('Bild der Lektion und Unterzeile der Karte', () => {
+    expect(sceneLabel(lesson(1))).toBe('Lektion 1: Erster Schubs als Bild');
+    expect(cardTag(1, 9)).toBe('1 Kiste, kürzester Weg 9 Züge');
+    expect(cardTag(4, 83)).toBe('4 Kisten, kürzester Weg 83 Züge');
   });
 });

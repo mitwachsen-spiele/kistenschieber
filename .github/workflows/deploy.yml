@@ -147,12 +147,53 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
 
+  # Browser-Tests im Spiel (Projekt game) auf demselben Build. Blob-Bericht für einen späteren gemeinsamen Bericht
+  e2e-game:
+    name: Browser-Tests – Spiel
+    needs: build
+    runs-on: ubuntu-latest
+    # vorläufig wie im Weltenbummler; gemessen und nach der 2,5×-Regel gesetzt wird, sobald das Spiel steht
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Fertige Seite holen
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+
+      - name: Browser installieren
+        run: npx playwright install --with-deps chromium
+
+      - name: Guard-Gate – Browser-Tests (Projekt game)
+        run: npx playwright test --project=game --reporter=github,blob
+        env:
+          PLAYWRIGHT_BLOB_OUTPUT_NAME: report-game.zip
+
+      - name: Blob-Bericht hochladen
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: blob-report-game
+          path: blob-report/
+          if-no-files-found: ignore
+          retention-days: 1
+
   # Ein einziger Pflicht-Check für das Ruleset „protect main“ (und damit für Renovates Automerge): grün nur, wenn alle
   # Gates grün sind. Läuft immer (auch wenn ein Gate rot ist oder abgebrochen wurde), damit der Check nie fehlt;
   # übersprungen zählt als rot. Neue Gate-Jobs hier unter needs eintragen.
   guard-gates:
     name: Guard-Gates
-    needs: [static, coverage, build, e2e-site]
+    needs: [static, coverage, build, e2e-site, e2e-game]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 2

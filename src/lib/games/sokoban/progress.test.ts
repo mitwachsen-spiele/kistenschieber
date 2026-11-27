@@ -5,12 +5,14 @@ import {
   type ProgressKV,
   doneCount,
   firstPlayable,
+  introDone,
   lastRef,
   markOpened,
   markShown,
   markSkipped,
   recordWin,
   refOf,
+  started,
   stateOf,
   unlocked,
 } from './progress';
@@ -145,5 +147,37 @@ describe('Bestwert, Überspringen, Lösung gesehen', () => {
     markShown(kv, 2);
     expect(stateOf(kv, 2)).toBe('shown');
     expect(unlocked(kv, 3)).toBe(true);
+  });
+});
+
+describe('Startbildschirm', () => {
+  it('started: ohne Fortschritt und ohne letzte Lektion (oder mit e1) noch nicht angefangen', () => {
+    const kv = memoryKV();
+    expect(started(kv, COUNT)).toBe(false);
+    kv.setLast('e1');
+    expect(started(kv, COUNT)).toBe(false);
+  });
+
+  it('started: eine erledigte Lektion oder eine spätere freie letzte Lektion heißt angefangen', () => {
+    const skipped = memoryKV();
+    skipped.setFlag('skip', 1);
+    expect(started(skipped, COUNT)).toBe(true);
+    const best = memoryKV();
+    best.setBest(3, { moves: 14, pushes: 6 });
+    expect(started(best, COUNT)).toBe(true);
+  });
+
+  it('started: eine gesperrte letzte Lektion zählt nicht', () => {
+    const kv = memoryKV();
+    kv.setLast('e5');
+    expect(started(kv, COUNT)).toBe(false);
+  });
+
+  it('introDone: erst wenn die letzte Lektion nicht mehr offen ist', () => {
+    const kv = memoryKV();
+    for (let n = 1; n < COUNT; n++) kv.setBest(n, { moves: 9, pushes: 4 });
+    expect(introDone(kv, COUNT)).toBe(false);
+    kv.setFlag('skip', COUNT);
+    expect(introDone(kv, COUNT)).toBe(true);
   });
 });

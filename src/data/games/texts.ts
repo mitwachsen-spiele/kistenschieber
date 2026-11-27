@@ -58,3 +58,18 @@ export const GAME_BUTTONS = {
   undo: 'Zug zurück',
   tip: 'Tipp',
 } as const;
+
+/** Zeile unter dem Titel des Startbildschirms; nach der Einführung kommen die Level erst noch */
+export const startStatus = (done: number, count: number, introDone: boolean): string =>
+  introDone ? 'Einführung geschafft. Die Level kommen bald.' : `Einführung: ${done} von ${count} Lektionen geschafft`;
+
+/** Großer Knopf des Startbildschirms */
+export const continueText = (started: boolean, n: number): string =>
+  started ? `Weiterspielen: Lektion ${n}` : 'Spielen';
+
+/** Bild einer Lektion auf dem Startbildschirm */
+export const sceneLabel = (lesson: Pick<Lesson, 'n' | 'title'>): string => `${lessonName(lesson)} als Bild`;
+
+/** Unterzeile einer Lektionskarte */
+export const cardTag = (boxes: number, moves: number): string =>
+  `${boxes === 1 ? '1 Kiste' : `${boxes} Kisten`}, kürzester Weg ${moves} Züge`;

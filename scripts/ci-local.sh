@@ -4,8 +4,8 @@
 # (2 CPUs, CPUS=4 für den 4-vCPU-Runner). Feste Wartezeiten, die auf 18 Kernen reichen, reißen erst hier. Strenger als
 # die Pipeline: kein Wiederholen fehlgeschlagener Browser-Tests.
 # Die Pipeline verteilt dieselben Schritte auf Jobs: static (Format, Lint, Architektur, Typen), coverage (npm test),
-# build (Build, verify), e2e-site (Projekt site). Hier laufen sie nacheinander; vorher wird geprüft, dass die Pipeline
-# jedes Projekt aus playwright.config.ts aufruft.
+# build (Build, verify), e2e-site (Projekt site), e2e-game (Projekt game). Hier laufen sie nacheinander; vorher wird
+# geprüft, dass die Pipeline jedes Projekt aus playwright.config.ts aufruft.
 # Geprüft wird der Arbeitsstand samt nicht committeter Änderungen (ohne node_modules und Ignoriertes). Nach einem
 # vollen grünen Lauf steht in .ci-local-ok der Tree-Hash des geprüften Stands – gleich `git rev-parse HEAD^{tree}`,
 # sobald genau dieser Stand committet ist. Der Hook .githooks/pre-push verlangt ihn vor jedem Push.
