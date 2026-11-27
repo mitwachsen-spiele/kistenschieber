@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { LESSONS } from './lessons';
 import {
   FINALE,
+  LOCKED,
+  badgeText,
+  introPill,
+  lockedGo,
+  lockedWhy,
+  thumbLabel,
   GAME_BUTTONS,
   SIGN,
   cardTag,
@@ -104,5 +110,33 @@ describe('Startbildschirm und Lektionskarten', () => {
     expect(sceneLabel(lesson(1))).toBe('Lektion 1: Erster Schubs als Bild');
     expect(cardTag(1, 9)).toBe('1 Kiste, kürzester Weg 9 Züge');
     expect(cardTag(4, 83)).toBe('4 Kisten, kürzester Weg 83 Züge');
+  });
+});
+
+describe('Levelwahl', () => {
+  it('Pille: 15 Lektionen, danach abgeschlossen', () => {
+    expect(introPill(15, false)).toBe('15 Lektionen');
+    expect(introPill(15, true)).toBe('abgeschlossen');
+  });
+
+  it('Vorschau-Label', () => {
+    expect(thumbLabel(7)).toBe('Vorschau von Lektion 7');
+  });
+
+  it('Zeile je Zustand wörtlich, offen ohne', () => {
+    expect(badgeText('locked', null)).toBe('Noch zu');
+    expect(badgeText('done', { moves: 9 })).toBe('Geschafft, Bestwert 9 Züge');
+    expect(badgeText('done', null)).toBeNull();
+    expect(badgeText('shown', null)).toBe('Mit Lösung gesehen');
+    expect(badgeText('skipped', null)).toBe('Übersprungen, später nachholen');
+    expect(badgeText('open', null)).toBeNull();
+  });
+
+  it('gesperrte Lektion: Überschrift, Grund, Knopf und Hinweis wörtlich', () => {
+    expect(LOCKED.title).toBe('Diese Lektion ist noch zu');
+    expect(LOCKED.state).toBe('noch zu');
+    expect(LOCKED.note).toBe('Alles wird der Reihe nach frei.');
+    expect(lockedWhy(lesson(2))).toBe('Schaff zuerst Lektion 2: Um die Ecke oder überspring es; dann geht es weiter.');
+    expect(lockedGo(2)).toBe('Zu Lektion 2');
   });
 });

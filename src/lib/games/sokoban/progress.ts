@@ -97,3 +97,14 @@ export function started(kv: ProgressKV, count: number): boolean {
   for (let n = 1; n <= count; n++) if (stateOf(kv, n) !== 'open') return true;
   return lastRef(kv, count) > 1;
 }
+
+/** Zustand einer Karte in der Levelwahl: gesperrt oder der Status der Lektion */
+export type CardState = LessonState | 'locked';
+
+export const cardState = (kv: ProgressKV, n: number): CardState => (unlocked(kv, n) ? stateOf(kv, n) : 'locked');
+
+/** Keine Lektion mehr offen (geschafft, gesehen oder übersprungen): Die Einführung ist abgeschlossen */
+export function allSettled(kv: ProgressKV, count: number): boolean {
+  for (let n = 1; n <= count; n++) if (stateOf(kv, n) === 'open') return false;
+  return true;
+}

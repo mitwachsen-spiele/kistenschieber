@@ -183,8 +183,11 @@ test.describe('Bildschirme per Hash', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Kistenschieber' })).toBeFocused();
     await screen(page, 'start').getByRole('link', { name: 'Level wählen' }).click();
     await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeFocused();
+    await page.locator('#lektion-1').click();
+    await expect(page.locator('#lektion-1')).toBeFocused();
+    await page.evaluate(() => (location.hash = '#level'));
     await page.locator('#lektion-3').click();
-    await expect(page.locator('#lektion-3')).toBeFocused();
+    await expect(page.getByRole('heading', { level: 2, name: 'Diese Lektion ist noch zu' })).toBeFocused();
   });
 
   test('bevor das Skript läuft: nur der Bildschirm aus dem Hash, nie Start und Liste zusammen', async ({ page }) => {
@@ -205,11 +208,132 @@ test.describe('Bildschirme per Hash', () => {
     await expect(game(page)).not.toHaveClass(/\bready\b/);
   });
 
-  test('#lektion-4 zeigt vorerst die Levelwahl mit ihrer Karte', async ({ page }) => {
-    await openGame(page, { hash: '#lektion-4' });
+  test('eine freie #lektion-4 zeigt vorerst die Levelwahl mit ihrer Karte', async ({ page }) => {
+    await openGame(page, { hash: '#lektion-4', store: { 'skip.e1': true, 'skip.e2': true, 'skip.e3': true } });
+    await expect(screen(page, 'gesperrt')).toBeHidden();
     await expect(page).toHaveTitle('Lektion 4 · Kistenschieber');
     await expect(page.locator('#lektion-4')).toBeInViewport();
     await expect(page.locator('#lektion-4')).toContainText('4. Ecken sind Fallen');
+  });
+});
+
+test.describe('Levelwahl', () => {
+  const card = (page: Page, n: number) => page.locator(`#lektion-${n}`);
+  const badge = (page: Page, n: number) => card(page, n).locator('.badge');
+  /** Zeichen hinter dem Titel (✓ geschafft, ↷ übersprungen), als CSS-Inhalt */
+  const mark = (page: Page, n: number) =>
+    card(page, n)
+      .locator('strong')
+      .evaluate((el) => getComputedStyle(el, '::after').content.replace(/^"|"$/g, '').trim());
+  const opacity = (page: Page, n: number) => card(page, n).evaluate((el) => Number(getComputedStyle(el).opacity));
+
+  test('leer: nur Lektion 1 frei, 2 bis 15 „Noch zu“ und ausgegraut; Vorschauen gezeichnet', async ({ page }) => {
+    const errors = watchErrors(page);
+    await openGame(page, { hash: '#level' });
+    await expect(page.getByText('Die Lektionen werden der Reihe nach frei;')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 3, name: 'Einführung 15 Lektionen' })).toBeVisible();
+    await expect(card(page, 1)).not.toHaveClass(/\blocked\b/);
+    await expect(badge(page, 1)).toBeHidden();
+    expect(await opacity(page, 1)).toBe(1);
+    for (let n = 2; n <= 15; n++) {
+      await expect(card(page, n)).toHaveClass(/\blocked\b/);
+      await expect(badge(page, n)).toHaveText('Noch zu');
+      expect(await opacity(page, n)).toBeLessThan(1);
+    }
+    for (const n of [1, 8, 15]) {
+      await expect(page.getByRole('img', { name: `Vorschau von Lektion ${n}`, exact: true })).toBeVisible();
+      expect(await drawn(page, `#lektion-${n} canvas`)).toBe(true);
+    }
+    await expect(card(page, 2)).toContainText('1 Kiste, kürzester Weg 6 Züge');
+    expect(errors).toEqual([]);
+  });
+
+  test('✓ mit Bestwert, ↷ übersprungen, mit Lösung gesehen; jeweils die nächste frei', async ({ page }) => {
+    await openGame(page, {
+      hash: '#level',
+      store: { 'best.e1': { moves: 11, pushes: 4 }, 'skip.e2': true, 'shown.e3': true },
+    });
+    await expect(card(page, 1)).toHaveClass(/\bdone\b/);
+    expect(await mark(page, 1)).toBe('✓');
+    await expect(badge(page, 1)).toHaveText('Geschafft, Bestwert 11 Züge');
+    await expect(card(page, 2)).toHaveClass(/\bskipped\b/);
+    expect(await mark(page, 2)).toBe('↷');
+    await expect(badge(page, 2)).toHaveText('Übersprungen, später nachholen');
+    await expect(card(page, 3)).toHaveClass(/\bshown\b/);
+    await expect(badge(page, 3)).toHaveText('Mit Lösung gesehen');
+    await expect(card(page, 4)).not.toHaveClass(/\blocked\b/);
+    await expect(badge(page, 4)).toBeHidden();
+    await expect(card(page, 5)).toHaveClass(/\blocked\b/);
+  });
+
+  test('nur Lektion 1 geschafft: Karte 2 frei und als einzige golden „dran“', async ({ page }) => {
+    await openGame(page, { hash: '#level', store: { 'best.e1': { moves: 9, pushes: 4 } } });
+    await expect(card(page, 2)).not.toHaveClass(/\blocked\b/);
+    await expect(badge(page, 2)).toBeHidden();
+    await expect(card(page, 2)).toHaveClass(/\bcur\b/);
+    await expect(page.locator('#level .card.cur')).toHaveCount(1);
+    const frame = await card(page, 2).evaluate((el) => getComputedStyle(el).boxShadow);
+    expect(frame).toContain('rgb(240, 165, 49)');
+  });
+
+  test('alle erledigt: Pille „abgeschlossen“', async ({ page }) => {
+    const store: Record<string, unknown> = {};
+    for (let n = 1; n <= 15; n++) store[`skip.e${n}`] = true;
+    await openGame(page, { hash: '#level', store });
+    await expect(page.locator('[data-ks="intro-pill"]')).toHaveText('abgeschlossen');
+    await expect(page.locator('[data-ks="intro-pill"]')).toHaveClass(/\bon\b/);
+    await expect(page.locator('#level .card.locked')).toHaveCount(0);
+  });
+
+  test('Ausblick: genau Kapitel 1 und 2, kein Link auf ein Level', async ({ page }) => {
+    await openGame(page, { hash: '#level' });
+    await expect(page.getByRole('heading', { level: 3, name: 'Level kommen bald' })).toBeVisible();
+    const chapters = page.locator('#level .chapters li');
+    await expect(chapters).toHaveText([
+      'Kapitel 1: Am Kai Level 1 bis 12, 2 bis 3 Kisten',
+      'Kapitel 2: Im Speicher Level 13 bis 24, 3 bis 4 Kisten',
+    ]);
+    await expect(page.locator('#level .chapters a')).toHaveCount(0);
+    await expect(page.locator('a[href^="#level-"]')).toHaveCount(0);
+    await expect(page.getByText('Zollhof')).toHaveCount(0);
+  });
+
+  test('gesperrte #lektion-5: Hinweis mit „Zu Lektion 1“, nach Lektion 1 „Zu Lektion 2“', async ({ page }) => {
+    const errors = watchErrors(page);
+    await openGame(page, { hash: '#lektion-5' });
+    const locked = screen(page, 'gesperrt');
+    await expect(locked).toBeVisible();
+    await expect(screen(page, 'level')).toBeHidden();
+    await expect(page.getByRole('heading', { level: 2, name: 'Diese Lektion ist noch zu' })).toBeVisible();
+    await expect(locked.locator('#locked-which')).toHaveText('Lektion 5: An der Wand entlang noch zu');
+    await expect(locked.locator('#locked-title')).toHaveAccessibleDescription('Lektion 5: An der Wand entlang noch zu');
+    await expect(
+      locked.getByText('Schaff zuerst Lektion 1: Erster Schubs oder überspring es; dann geht es weiter.'),
+    ).toBeVisible();
+    await expect(locked.getByRole('link', { name: 'Zu Lektion 1' })).toHaveAttribute('href', '#lektion-1');
+    await expect(locked.getByRole('link', { name: 'Level wählen' })).toHaveAttribute('href', '#level');
+    await expect(locked.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute('href', '#einstellungen');
+    await expect(locked.getByText('Alles wird der Reihe nach frei.')).toBeVisible();
+    await expect(page).toHaveTitle('Lektion 5 · Kistenschieber');
+
+    await page.evaluate(() => localStorage.setItem('kistenschieber.best.e1', '{"moves":9,"pushes":4}'));
+    await page.evaluate(() => (location.hash = '#lektion-6'));
+    await expect(locked.getByText('Schaff zuerst Lektion 2: Um die Ecke')).toBeVisible();
+    await expect(locked.locator('#locked-which')).toContainText('Lektion 6:');
+    await expect(locked.getByRole('link', { name: 'Zu Lektion 2' })).toHaveAttribute('href', '#lektion-2');
+    await locked.getByRole('link', { name: 'Zu Lektion 2' }).click();
+    await expect(screen(page, 'gesperrt')).toBeHidden();
+    await expect(card(page, 2)).toBeFocused();
+    expect(errors).toEqual([]);
+  });
+
+  test('Karten heben sich beim Überfahren, nicht bei reduzierter Bewegung', async ({ page }) => {
+    await openGame(page, { hash: '#level' });
+    await card(page, 1).hover();
+    const lifted = () => card(page, 1).evaluate((el) => getComputedStyle(el).transform);
+    expect(await lifted()).toBe('matrix(1, 0, 0, 1, 0, -3)');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    expect(await lifted()).toBe('none');
   });
 });
 
@@ -229,6 +353,9 @@ test.describe('ohne JavaScript', () => {
     await expect(note).toBeVisible();
     await expect(note).toContainText('Zum Spielen braucht Kistenschieber JavaScript.');
     await expect(page.locator('canvas:visible')).toHaveCount(0);
+    await expect(page.locator('.badge:visible')).toHaveCount(0);
+    await expect(screen(page, 'gesperrt')).toBeHidden();
+    await expect(page.locator('#level .chapters li')).toHaveCount(2);
     await expect(screen(page, 'einstellungen')).toBeHidden();
     await expect(page.getByRole('link', { name: 'Einstellungen' })).toBeHidden();
   });
@@ -243,7 +370,7 @@ test('Spielseite ist nicht im Suchindex und meldet keinen Service Worker an', as
 });
 
 for (const width of [320, 390, 1280])
-  for (const hash of ['', '#level', '#einstellungen'])
+  for (const hash of ['', '#level', '#einstellungen', '#lektion-5'])
     test(`${hash || 'Start'} bei ${width} px ohne seitliches Scrollen`, async ({ page }) => {
       await page.setViewportSize({ width, height: 800 });
       await openGame(page, { hash });

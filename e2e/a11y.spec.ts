@@ -34,4 +34,27 @@ for (const colorScheme of ['light', 'dark'] as const)
       await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeVisible();
       expect(await violations(page)).toEqual([]);
     });
+
+    test('Barrierefrei: Levelwahl mit ✓, ↷, gesehen und goldener Karte', async ({ page }) => {
+      await openGame(page, {
+        hash: '#level',
+        store: { 'best.e1': { moves: 9, pushes: 4 }, 'skip.e2': true, 'shown.e3': true },
+      });
+      await expect(page.locator('#lektion-4')).toHaveClass(/\bcur\b/);
+      expect(await violations(page)).toEqual([]);
+    });
+
+    test('Barrierefrei: Levelwahl abgeschlossen', async ({ page }) => {
+      const store: Record<string, unknown> = {};
+      for (let n = 1; n <= 15; n++) store[`skip.e${n}`] = true;
+      await openGame(page, { hash: '#level', store });
+      await expect(page.locator('[data-ks="intro-pill"]')).toHaveText('abgeschlossen');
+      expect(await violations(page)).toEqual([]);
+    });
+
+    test('Barrierefrei: gesperrte Lektion', async ({ page }) => {
+      await openGame(page, { hash: '#lektion-5' });
+      await expect(page.getByRole('heading', { level: 2, name: 'Diese Lektion ist noch zu' })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+    });
   });

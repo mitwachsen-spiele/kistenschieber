@@ -3,6 +3,8 @@ import {
   type Best,
   type Flag,
   type ProgressKV,
+  allSettled,
+  cardState,
   doneCount,
   firstPlayable,
   introDone,
@@ -179,5 +181,41 @@ describe('Startbildschirm', () => {
     expect(introDone(kv, COUNT)).toBe(false);
     kv.setFlag('skip', COUNT);
     expect(introDone(kv, COUNT)).toBe(true);
+  });
+});
+
+describe('Levelwahl', () => {
+  it('cardState: leer ist nur Lektion 1 frei, alle anderen gesperrt', () => {
+    const kv = memoryKV();
+    expect(cardState(kv, 1)).toBe('open');
+    for (let n = 2; n <= COUNT; n++) expect(cardState(kv, n)).toBe('locked');
+  });
+
+  it('cardState: Status der freien Lektionen, die nächste wird frei', () => {
+    const kv = memoryKV();
+    kv.setBest(1, { moves: 9, pushes: 4 });
+    kv.setFlag('skip', 2);
+    kv.setFlag('shown', 3);
+    expect(cardState(kv, 1)).toBe('done');
+    expect(cardState(kv, 2)).toBe('skipped');
+    expect(cardState(kv, 3)).toBe('shown');
+    expect(cardState(kv, 4)).toBe('open');
+    expect(cardState(kv, 5)).toBe('locked');
+  });
+
+  it('allSettled erst, wenn keine Lektion mehr offen ist', () => {
+    const kv = memoryKV();
+    expect(allSettled(kv, COUNT)).toBe(false);
+    for (let n = 1; n < COUNT; n++) kv.setFlag('skip', n);
+    expect(allSettled(kv, COUNT)).toBe(false);
+    kv.setBest(COUNT, { moves: 1, pushes: 1 });
+    expect(allSettled(kv, COUNT)).toBe(true);
+  });
+
+  it('allSettled nicht schon mit der letzten Lektion allein (anders als introDone)', () => {
+    const kv = memoryKV();
+    kv.setFlag('skip', COUNT);
+    expect(introDone(kv, COUNT)).toBe(true);
+    expect(allSettled(kv, COUNT)).toBe(false);
   });
 });

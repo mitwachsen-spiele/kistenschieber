@@ -275,6 +275,144 @@ a.btn:hover {
 .card span {
   font-size: 0.93rem;
 }
+.card:hover {
+  transform: translateY(-3px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .card:hover {
+    transform: none;
+  }
+}
+.pill.on {
+  color: var(--ink);
+  background: var(--ok-soft);
+  box-shadow: inset 0 0 0 2px var(--ok-edge);
+}
+.card.lv {
+  padding-top: 0;
+  overflow: hidden;
+}
+/* Vorschau oben über die ganze Breite der Karte, auf Himmel wie die Szenen */
+.thumb {
+  margin: 0 -18px 6px;
+  padding: 8px 12px;
+  background: linear-gradient(var(--sky-deep), var(--sky-low));
+  min-height: 120px;
+  display: grid;
+  align-items: center;
+}
+.thumb canvas {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+}
+.card.lv .badge {
+  font-weight: 800;
+  font-size: 0.88rem;
+}
+.card.lv.done .badge,
+.card.lv.done strong::after {
+  color: var(--ok);
+}
+.card.lv.done strong::after {
+  content: '  ✓';
+  white-space: pre;
+}
+.card.lv.skipped .badge,
+.card.lv.skipped strong::after {
+  color: var(--skip);
+}
+.card.lv.skipped strong::after {
+  content: '  ↷';
+  white-space: pre;
+}
+.card.lv.shown .badge {
+  color: var(--info);
+}
+.card.lv.locked {
+  opacity: 0.62;
+}
+.card.lv.locked .thumb canvas {
+  filter: grayscale(1);
+}
+/* Durch die Deckkraft wird die Unterzeile blasser; in --text statt --soft bleibt sie lesbar (Kontrast ≥ 4,5:1) */
+.card.lv.locked .tag {
+  color: var(--text);
+}
+/* „dran“: die Lektion, bei der es weitergeht, in Gold gerahmt (Menüführung im Entwurf: „gold: dran“). Der Rahmen
+   bleibt im Umriss der anderen Karten: außen 1px --line, dann 2px Gold, innen noch 2px Gold über der Vorschau */
+.card.lv.cur {
+  position: relative;
+  box-shadow:
+    0 -2px 0 0 var(--gold),
+    0 2px 0 0 var(--gold),
+    -2px 0 0 0 var(--gold),
+    2px 0 0 0 var(--gold),
+    var(--ks-px);
+}
+.card.lv.cur::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 2px var(--gold);
+  pointer-events: none;
+}
+/* Ausblick auf die Level: nur Ankündigung, nichts zum Anklicken */
+.chapters {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+.chapters li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 0;
+}
+/* Schmal steht die Spanne immer unter dem Kapitelnamen, bündig, statt mal daneben, mal darunter */
+@media (max-width: 560px) {
+  .chapters li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .chapters .pill {
+    margin-left: 0;
+  }
+}
+.chapters b {
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+/* ---------- Gesperrte Lektion ---------- */
+.advice {
+  background: var(--wood);
+  box-shadow: var(--ks-px);
+  padding: 16px 20px;
+  display: grid;
+  gap: 8px;
+  justify-self: center;
+  width: 100%;
+  max-width: 38rem;
+}
+.advice .which {
+  font-family: var(--font-pixel);
+}
+.advice .which .pill {
+  margin-left: 6px;
+}
+.screen .advice h2 {
+  font-size: 1.15rem;
+}
+.advice p {
+  margin: 0;
+}
+.advice .opts {
+  margin-top: 6px;
+}
 
 /* ---------- Einstellungen ---------- */
 /* Ohne Seitenleiste wie im Entwurf: die Spalte mittig, wie der Start darüber */

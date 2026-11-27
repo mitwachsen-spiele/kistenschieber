@@ -6,7 +6,18 @@
 import '../styles/game.css';
 import { parseLevel } from '../lib/games/sokoban/level';
 import { LESSONS } from '../data/games/lessons';
-import { cardTag, continueText, sceneLabel, startStatus } from '../data/games/texts';
+import {
+  LOCKED,
+  cardTag,
+  continueText,
+  introPill,
+  lockedGo,
+  lockedWhy,
+  sceneLabel,
+  startStatus,
+  thumbLabel,
+} from '../data/games/texts';
+import { CHAPTERS, TEASER, chapterName, chapterRange } from '../data/games/teaser';
 import { SETTINGS_DEFAULT } from '../scripts/games/ks-save';
 
 const first = LESSONS[0]!;
@@ -51,19 +62,36 @@ const { drehung, neigung } = SETTINGS_DEFAULT;
       Die Lektionen werden der Reihe nach frei; Überspringen oder „Lösung zeigen“ machen die nächste trotzdem frei.
     </p>
     <h3>
-      Einführung <span class="pill">{LESSONS.length} Lektionen</span>
+      Einführung{' '}
+      <span class="pill" data-ks="intro-pill">
+        {introPill(LESSONS.length, false)}
+      </span>
     </h3>
     <div class="lvgrid">
       {cards.map((l) => (
         <a class="card lv" id={l.id} href={`#${l.id}`}>
+          <div class="thumb ks-js">
+            <canvas role="img" aria-label={thumbLabel(l.n)}></canvas>
+          </div>
           <strong>
             {l.n}. {l.title}
           </strong>
           <span class="tag">{l.tag}</span>
           <span>{l.idea}</span>
+          <span class="badge" hidden></span>
         </a>
       ))}
     </div>
+    <h3>
+      {TEASER.title} <span class="pill">{TEASER.pill}</span>
+    </h3>
+    <ul class="chapters">
+      {CHAPTERS.map((c) => (
+        <li>
+          <b>{chapterName(c)}</b> <span class="pill">{chapterRange(c)}</span>
+        </li>
+      ))}
+    </ul>
   </section>
 
   <section id="einstellungen" class="screen settings" aria-labelledby="set-title" hidden>
@@ -128,6 +156,30 @@ const { drehung, neigung } = SETTINGS_DEFAULT;
         läuft auch ohne Internet.
       </p>
     </section>
+  </section>
+
+  <section id="gesperrt" class="screen" aria-labelledby="locked-title" hidden>
+    <div class="advice">
+      <p class="which" id="locked-which">
+        <b data-ks="which"></b> <span class="pill">{LOCKED.state}</span>
+      </p>
+      <h2 id="locked-title" tabindex="-1" aria-describedby="locked-which">
+        {LOCKED.title}
+      </h2>
+      <p data-ks="why">{lockedWhy(first)}</p>
+      <div class="opts">
+        <a class="btn big primary" href={`#${first.id}`} data-ks="first">
+          {lockedGo(first.n)}
+        </a>
+        <a class="btn big" href="#level">
+          Level wählen
+        </a>
+        <a class="btn big" href="#einstellungen">
+          Einstellungen
+        </a>
+      </div>
+      <p class="note">{LOCKED.note}</p>
+    </div>
   </section>
 
   <section id="spiel" class="screen play" hidden></section>

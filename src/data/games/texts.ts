@@ -1,5 +1,6 @@
 // Texte des Spielbildschirms wörtlich aus dem Entwurf „Kistenschieber“: Schild, Zähler, Titel und Knöpfe nach dem Sieg.
 // Der Spielzustand (lib/games/sokoban/state.ts) meldet nur Schlüssel, hier stehen die Sätze dazu.
+import type { CardState } from '../../lib/games/sokoban/progress';
 import type { MsgKey } from '../../lib/games/sokoban/state';
 import { LESSONS, type Lesson } from './lessons';
 
@@ -73,3 +74,32 @@ export const sceneLabel = (lesson: Pick<Lesson, 'n' | 'title'>): string => `${le
 /** Unterzeile einer Lektionskarte */
 export const cardTag = (boxes: number, moves: number): string =>
   `${boxes === 1 ? '1 Kiste' : `${boxes} Kisten`}, kürzester Weg ${moves} Züge`;
+
+/** Pille neben „Einführung“ in der Levelwahl */
+export const introPill = (count: number, settled: boolean): string =>
+  settled ? 'abgeschlossen' : `${count} Lektionen`;
+
+/** Vorschaubild einer Lektionskarte */
+export const thumbLabel = (n: number): string => `Vorschau von Lektion ${n}`;
+
+/** Zeile unten auf einer Lektionskarte; eine offene freie Lektion hat keine */
+export function badgeText(state: CardState, best: { readonly moves: number } | null): string | null {
+  if (state === 'locked') return 'Noch zu';
+  if (state === 'done') return best ? `Geschafft, Bestwert ${best.moves} Züge` : null;
+  if (state === 'shown') return 'Mit Lösung gesehen';
+  return state === 'skipped' ? 'Übersprungen, später nachholen' : null;
+}
+
+/** Seite einer gesperrten Lektion: Überschrift, warum, wohin, Hinweis */
+export const LOCKED = {
+  title: 'Diese Lektion ist noch zu',
+  state: 'noch zu',
+  note: 'Alles wird der Reihe nach frei.',
+} as const;
+
+/** Warum eine Lektion noch zu ist: erst die erste offene schaffen oder überspringen */
+export const lockedWhy = (first: Pick<Lesson, 'n' | 'title'>): string =>
+  `Schaff zuerst ${lessonName(first)} oder überspring es; dann geht es weiter.`;
+
+/** Knopf zur ersten offenen Lektion */
+export const lockedGo = (n: number): string => `Zu Lektion ${n}`;

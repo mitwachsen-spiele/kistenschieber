@@ -48,6 +48,8 @@
   --ok: #2b7a42; /* geschafft */
   --skip: #a65f08; /* übersprungen */
   --info: #2c5f8c; /* mit Lösung gesehen */
+  --ok-soft: #e3f5d6; /* Pille „abgeschlossen“, hell in beiden Schemata (wie das Schild „Geschafft!“) */
+  --ok-edge: #3c9656;
   --ks-px: 0 -3px 0 0 var(--line), 0 3px 0 0 var(--line), -3px 0 0 0 var(--line), 3px 0 0 0 var(--line);
 }
 

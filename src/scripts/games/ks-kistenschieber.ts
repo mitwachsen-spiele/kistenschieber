@@ -7,17 +7,16 @@
 import { type Camera, clampCamera, makeCamera } from '../../lib/games/oblique/camera';
 import { browserStore } from './browser-store';
 import { loadSettings, progressKV, saveSetting, type Settings, type Store } from './ks-save';
-import { route, type Screen } from './ks-router';
-import { COUNT, type Host, SettingsScreen, StartScreen } from './ks-screens';
+import { unlocked } from '../../lib/games/sokoban/progress';
+import { route, type Route } from './ks-router';
+import { COUNT, type Host, LevelScreen, LockedScreen, SettingsScreen, StartScreen } from './ks-screens';
 import { watchTouch } from './ks-touch';
 
-/** Welcher Abschnitt zeigt welchen Bildschirm (die Lektion zeigt bis zum Spielfeld die Levelwahl mit ihrer Karte) */
-const SECTION: Record<Screen, string> = {
-  start: 'start',
-  level: 'level',
-  einstellungen: 'einstellungen',
-  lektion: 'level',
-};
+/**
+ * Welcher Abschnitt zeigt den Bildschirm: Eine gesperrte Lektion zeigt, warum sie zu ist; eine freie bis zum Spielfeld
+ * die Levelwahl mit ihrer Karte
+ */
+type Section = 'start' | 'level' | 'einstellungen' | 'gesperrt';
 
 class KsKistenschieber extends HTMLElement {
   private globals: AbortController | null = null;
@@ -26,9 +25,12 @@ class KsKistenschieber extends HTMLElement {
   private store!: Store;
   private settings!: Settings;
   private cam!: Camera;
-  private screen: Screen = 'start';
   private start!: StartScreen;
   private prefs!: SettingsScreen;
+  private levels!: LevelScreen;
+  private locked!: LockedScreen;
+  private kv!: Host['kv'];
+  private shown: Section = 'start';
   private queued = false;
   private readonly widths = new WeakMap<Element, number>();
 
@@ -40,8 +42,9 @@ class KsKistenschieber extends HTMLElement {
     this.settings = loadSettings(this.store);
     this.cam = this.makeCam();
     watchTouch(signal);
+    this.kv = progressKV(this.store);
     const host: Host = {
-      kv: progressKV(this.store),
+      kv: this.kv,
       settings: () => this.settings,
       set: (key, value) => {
         this.settings = { ...this.settings, [key]: value };
@@ -52,6 +55,8 @@ class KsKistenschieber extends HTMLElement {
     };
     this.start = new StartScreen(this.section('start'), host);
     this.prefs = new SettingsScreen(this.section('einstellungen'), host, signal);
+    this.levels = new LevelScreen(this.section('level'), host);
+    this.locked = new LockedScreen(this.section('gesperrt'), host);
     addEventListener('hashchange', () => this.show(true), { signal });
     // Neu zeichnen, wenn sich die Breite einer Szene ändert (Drehen des Geräts, Fenster)
     this.observer = new ResizeObserver((entries) => {
@@ -63,7 +68,7 @@ class KsKistenschieber extends HTMLElement {
         }
       }
     });
-    for (const s of this.querySelectorAll('.scene')) this.observer.observe(s);
+    for (const s of this.querySelectorAll('.scene, .thumb')) this.observer.observe(s);
     this.show();
     this.classList.add('ready');
   }
@@ -80,6 +85,11 @@ class KsKistenschieber extends HTMLElement {
     return makeCamera(yaw, tilt);
   }
 
+  private sectionFor(r: Route): Section {
+    if (r.screen !== 'lektion') return r.screen;
+    return r.n !== null && unlocked(this.kv, r.n) ? 'level' : 'gesperrt';
+  }
+
   private section(id: string): HTMLElement {
     const s = this.querySelector<HTMLElement>(`:scope > section#${id}`);
     if (!s) throw new Error(`Kistenschieber: Bildschirm ${id} fehlt`);
@@ -94,15 +104,17 @@ class KsKistenschieber extends HTMLElement {
   private show(moved = false) {
     const r = route(location.hash, COUNT);
     if (r.replace !== null) history.replaceState(history.state, '', r.replace || location.pathname + location.search);
-    this.screen = r.screen;
     this.classList.remove('settled');
-    const id = SECTION[r.screen];
+    const id = this.sectionFor(r);
+    this.shown = id;
     for (const s of this.querySelectorAll<HTMLElement>(':scope > section')) s.hidden = s.id !== id;
     document.title = r.title;
-    if (r.screen === 'start') this.start.enter();
-    if (r.screen === 'einstellungen') this.prefs.enter();
-    // Der Browser springt sonst zum Element mit der id aus dem Hash; eine Lektion zeigt vorerst ihre Karte
-    const card = r.n === null ? null : document.getElementById(`lektion-${r.n}`);
+    if (id === 'start') this.start.enter();
+    else if (id === 'einstellungen') this.prefs.enter();
+    else if (id === 'level') this.levels.enter();
+    else this.locked.enter(r.n);
+    // Der Browser springt sonst zum Element mit der id aus dem Hash; eine freie Lektion zeigt vorerst ihre Karte
+    const card = r.n === null || id !== 'level' ? null : document.getElementById(`lektion-${r.n}`);
     if (card) card.scrollIntoView({ block: 'center', behavior: 'instant' });
     else scrollTo({ top: 0, left: 0, behavior: 'instant' });
     if (moved) {
@@ -126,8 +138,9 @@ class KsKistenschieber extends HTMLElement {
   /** Ein Bild: die Szene des sichtbaren Bildschirms (auch von der Test-Uhr gerufen) */
   frame() {
     if (!this.globals) return;
-    if (this.screen === 'start') this.start.draw();
-    else if (this.screen === 'einstellungen') this.prefs.draw();
+    if (this.shown === 'start') this.start.draw();
+    else if (this.shown === 'einstellungen') this.prefs.draw();
+    else if (this.shown === 'level') this.levels.draw();
     if (this.classList.contains('settled')) return;
     if (this.manual) this.classList.add('settled');
     else requestAnimationFrame(() => this.classList.add('settled'));
