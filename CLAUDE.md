@@ -1,38 +1,62 @@
 # CLAUDE.md
 
-Künftiges Spiel „Kistenschieber“ von mitwachsen-spiele.de (Lars Michaelis), unter https://kistenschieber.mitwachsen-spiele.de/. Heute nur ein Platzhalter mit voller Pipeline. Astro 7, statische Ausgabe, Sprache Deutsch. Die Homepage liegt in `mitwachsen-spiele/website`, das erste Spiel in `mitwachsen-spiele/weltenbummler` (Vorbild für Spielcode, Gates, App und Service Worker, wenn das Spiel hier entsteht).
+Das Denkspiel „Kistenschieber“ von mitwachsen-spiele.de (Lars Michaelis) unter https://kistenschieber.mitwachsen-spiele.de/: Kisten an einem Hafenkai auf Ziele schieben, im Stil „An der Kaje“ mit der Figur Frauke. Astro 7, statische Ausgabe, Sprache Deutsch. Das Spiel liegt an der Wurzel `/`, als installierbare App (PWA). Spielbar sind Startbildschirm, Levelwahl, Einstellungen und die Einführung mit 15 Lektionen (Issue #6); die 24 Level folgen mit eigenem Issue. Die Homepage mit Datenschutzerklärung liegt in `mitwachsen-spiele/website`, das erste Spiel in `mitwachsen-spiele/weltenbummler` (Vorbild für Gates, App und Service Worker; dort nachsehen, bevor hier etwas Neues erfunden wird).
+
+Entwurf: das Artefakt „Kistenschieber“ mit den Seiten Startbildschirm, Level wählen, Einstellungen, Menüführung, Handy und Tablet, Grafik, Stil und Figur, Kisten und Ziele. Texte kommen wörtlich daraus. Was davon bewusst anders ist, steht in der Spec unter „Bewusst anders als im Entwurf“.
 
 ## Befehle
 
 ```bash
 npm run dev      # Entwicklungsserver auf http://localhost:4321
-npm run check    # Guard-Gate: Typen
-npm test         # Guard-Gate: Unit-Tests (Vitest) mit Mindest-Abdeckung (vitest.config.ts)
-npm run lint     # Guard-Gate: ESLint
+npm run check    # Guard-Gate: Typen – muss grün sein
+npm test         # Guard-Gate: Unit-Tests (Vitest) mit Mindest-Abdeckung der reinen Module (vitest.config.ts) – muss grün sein
+npm run lint     # Guard-Gate: ESLint – muss grün sein
 npm run format   # Prettier; `npm run format:check` ist das Guard-Gate
-npm run arch     # Guard-Gate: Architekturregeln (dependency-cruiser)
+npm run arch     # Guard-Gate: Architekturregeln (dependency-cruiser) – muss grün sein
 npm run build    # statische Seite nach dist/
-npm run verify   # Guard-Gate nach dem Build: gültiges HTML, keine toten internen Links, Bundle-Gate, Seiten-Gate (keine externen Ressourcen)
-npm run test:e2e # Guard-Gate nach dem Build: Browser-Tests (Playwright, e2e/) samt Barrierefreiheit nach WCAG 2.2 AA
-npm run gates:ci # alle Gates CI-nah in Docker (scripts/ci-local.sh), 2 CPUs; grün schreibt den Tree-Hash nach .ci-local-ok
-# Git-Hooks: .githooks/pre-commit (Formatierung, Lint, Architektur, Tests), .githooks/pre-push (verlangt grünes gates:ci)
+npm run verify   # Guard-Gate nach dem Build: gültiges HTML, keine toten internen Links und Sprungmarken, Bundle-Gate (Kern der Spielseite, Nachgeladenes, übrige Seiten ohne Spiel), Seiten-Gate (keine externen Ressourcen), App-Gate (Manifest, Icons, Service Worker, `PRECACHE_BUDGET` in scripts/verify-pwa.ts)
+npm run test:e2e # Guard-Gate nach dem Build: Browser-Tests (Playwright, e2e/, Projekte in playwright.config.ts: `site` (site.spec.ts, installable.spec.ts), `game` (game, touch, a11y, pwa; mit Test-Uhr), `pwa-update` einzeln mit zwei Fassungen der Seite) samt Barrierefreiheit nach WCAG 2.2 AA; einmalig: npx playwright install chromium
+npm run gates    # alle Gates in der Reihenfolge der Pipeline
+npm run gates:ci # alle Gates CI-nah in Docker (scripts/ci-local.sh): dieselben Schritte und Playwright-Projekte wie die Jobs der Pipeline, 2 CPUs, Browser-Tests ohne Wiederholung, Dauer je Job gegen seine Frist; grün schreibt den Tree-Hash nach .ci-local-ok
+# Git-Hooks: .githooks/pre-commit (Formatierung, Lint, Architektur, Tests), .githooks/pre-push (verlangt grünes gates:ci, sobald ein Commit mehr als Doku berührt)
 ```
+
+Vor jedem Commit `npm run format`, `npm run lint`, `npm run arch`, `npm run check`, `npm test`, `npm run build`, `npm run verify` und `npm run test:e2e` ausführen.
 
 ## Aufbau
 
-- `src/pages/` – Platzhalter `/`, 404, `og.png`, Favicons, `apple-touch-icon`
-- `src/data/site.ts` – Seitendaten, Farben, Adressen von Homepage und Weltenbummler
-- `src/lib/voxel/` – Würfel-Grafik, läuft beim Build
-- `src/components/`, `src/layouts/`, `src/styles/` – Oberfläche und Design-Tokens
-- `scripts/` – Gates nach dem Build (`bundles.ts`, `dist.ts`), `ci-local.sh`
+- `src/pages/` – `/` (das Spiel, `noindex`), 404; dazu `favicon.*`, `[icon].png.ts` (apple-touch-icon und Icons der App), `og.png.ts`, `manifest.webmanifest.ts` (beim Build erzeugt)
+- `src/components/KistenschieberGame.astro` – alle Bildschirme als statisches HTML in `<ks-kistenschieber>` (`section#start`, `#level`, `#gesperrt`, `#einstellungen`, `#spiel`, Lektionskarten `#lektion-N`), `<noscript>`-Hinweis
+- `src/layouts/BaseLayout.astro` – Kopfdaten, Schriften, Manifest; `PlainPage.astro` – 404
+- Spiel, rein und getestet: `src/lib/games/sokoban/` (`level.ts` XSB und Richtungen, `solver.ts` Löser mit Grenzen `SOLVE_CAP` 60000 und `CHECK_CAP` 20000, `state.ts` Spielzustand als Reducer, `progress.ts` Fortschritt über `ProgressKV`, `scene.ts` Szene aus dem Zustand, `confetti.ts`), `src/lib/games/oblique/` (Kamera, Formen und Treffer, Modelle aus Quadern, feine Texturen gegen `Pen`, `svg-pen.ts`), `src/lib/games/later.ts` (Nachladen bei Bedarf)
+- Spieldaten: `src/data/games/` (`lessons.ts` die 15 Lektionen wörtlich, `texts.ts` alle Texte, `kaje.ts` Stil, Frauke, Poller, Möwe, `teaser.ts` Kapitel 1 und 2 der Level)
+- Browser: `src/scripts/games/` – `ks-kistenschieber.ts` (Web Component: Router, Bildschirme, Takt, `ready`/`settled`, Test-Uhr), `ks-router.ts` (Hash → Bildschirm, rein), `ks-screens.ts` (Start, Levelwahl, gesperrt, Einstellungen), `ks-game.ts` (Spielfeld: Reducer ↔ DOM, Menü, Pointer), `ks-input.ts` (Tasten, Wischen, Antippen, rein), `ks-save.ts` (Speicher, rein), `ks-touch.ts`, `wake-lock.ts`, `render/` (Canvas), `ks-menu.ts` (nachgeladen: Konfetti)
+- App: `src/data/pwa.ts` (Name, Farben, Icons, Service Worker), `src/data/app-icon.ts`, `src/lib/pwa/` (`manifest.ts`, `precache.ts`, `sw.ts`), `src/integrations/service-worker.ts` (schreibt `dist/sw.js`), `src/scripts/games/pwa-register.ts` (Anmeldung, nachgeladen), `pwa-update.ts` (wann ein Update sicher ist, rein), `pwa-moment.ts` (was der Kern dafür meldet)
+- `src/lib/voxel/` – Würfel-Grafik der 404-Seite, Symbol der App (`icon.ts`)
+- `src/styles/` – `tokens.css` (Design-Tokens), `game.css` (Spielseite), `global.css`, `sections.css`
+- `scripts/` – Gates nach dem Build (`bundles.ts`, `dist.ts`, `pwa.ts` mit ihren `verify-*.ts`), `ci-local.sh`, `flaky.ts`/`flaky-summary.ts` (wackelige Tests in die Zusammenfassung), `guards.test.ts` (Budgets, Abdeckung, Fristen), `docs.test.ts` (Spec und Doku)
+- `docs/specs/kistenschieber.md` – Spec (Regeln mit Test, Invarianten, App, Speichern, Haken für Browser-Tests). Bei Änderungen am Verhalten Spec und Tests mitziehen
+- `docs/design-system.md` – Farben, Typografie, Grafik „fein“, Frauke, Symbol
 
 ## Regeln
 
-- Design-Tokens aus `tokens.css` nutzen, keine neuen Farben ohne Grund. Gold ist die einzige Aktionsfarbe.
+- Schichten (geprüft durch `npm run arch`): `src/lib` ist generisch und importiert nichts aus `src/data`, `components`, `layouts`, `pages`, `scripts`. `src/data` kennt keine Oberfläche. Browser-Code in `src/scripts` nutzt aus `lib` nur `src/lib/games/` und `src/lib/voxel/textures.ts`, nichts aus Node und nie `src/lib/pwa` (nur beim Build). `src/lib/games/` und `src/data/games/` laufen im Browser. Tests in `lib` importieren nichts aus `data`; Tests über alle Lektionen stehen in `src/data/games/lessons.test.ts`.
+- Design-Tokens aus `tokens.css` nutzen, keine neuen Farben ohne Grund; neue Spiel-Tokens bekommen ihren Dunkelwert unter beiden Selektoren. Gold ist die einzige Aktionsfarbe. Farben des Spielfelds stehen in `kaje.ts` und den Textur-Zeichnern, nicht im CSS.
+- Texte wörtlich aus dem Entwurf, an einer Stelle (`src/data/games/texts.ts`); ein Test prüft sie.
+- Alle Inhalte bleiben im HTML; Interaktion ist Zusatz. Ohne JavaScript sind Start und Lektionen als Dokument lesbar, Spielfeld und Einstellungen bleiben ausgeblendet, ein `<noscript>`-Hinweis im Start sagt, dass das Spiel JavaScript braucht.
+- Keine Logos, Figuren oder Texturen aus Minecraft oder Hytale – nur eigene Grafik.
 - Keine externen Ressourcen ohne Klick des Nutzers (Schriften lokal). Geprüft durch `npm run verify:dist`.
-- Keine Logos, Figuren oder Texturen aus Minecraft oder Hytale – nur eigene Voxel-Grafik.
-- Impressum (larmic.de) und Datenschutz (www.mitwachsen-spiele.de/datenschutz/) liegen außerhalb; speichert das Spiel später etwas im Browser, muss die Datenschutzerklärung im Repo `website` das nennen.
-- Der Platzhalter ist `noindex`. Kommt das Spiel, bekommen Bundle-Gate (`scripts/verify-bundles.ts`) und Browser-Tests eigene Regeln, Vorbild ist `weltenbummler`.
-- TypeScript prüft jeden Index-Zugriff (`noUncheckedIndexedAccess`): fehlende Einträge behandeln.
-- Arbeitsweise mit Issues und Pull Requests: Was umgesetzt wird, steht als Issue im Repo (Entwürfe liegen im Artefakt, nicht im Repo). Jedes Feature und jeder Fehler bekommt einen eigenen Branch (`feat/<nr>-<kurz>`, `fix/<nr>-<kurz>`, nur Doku: `docs/<kurz>`); auf `main` wird nicht mehr direkt committet. Auf dem Branch entsteht das Feature in einzelnen Commits je Schritt wie bisher. Ist es fertig, wird der Branch gepusht und ein Pull Request mit `Closes #<nr>` in der Beschreibung angelegt. Das Gate bleibt der lokale CI-nahe Lauf (`npm run gates:ci`) vor dem Push, wie unten beschrieben; die Pipeline des Pull Requests ist die zweite Prüfung, sie ersetzt den lokalen Lauf nicht. Sind alle Gates der Pipeline grün, mergt Claude den Pull Request selbst (Merge-Commit, Branch danach löschen); erst das löst den Deploy aus. Ist ein Gate rot, wird nicht gemergt, sondern die Ursache auf dem Branch behoben. Aufgaben im Issue werden beim Erledigen abgehakt.
-- CI-naher Lauf (`npm run gates:ci`): Bevor dem Nutzer ein Feature als fertig gemeldet wird und vor jedem Push eines Stapels muss er auf dem finalen HEAD grün sein, auch nach Merges (der Pre-Push-Hook prüft `.ci-local-ok`). Lokale Läufe auf vielen Kernen sagen nichts über den 4-vCPU-Runner mit Software-WebGL. Ein roter oder wackliger Lauf wird nie wegerklärt („Flake“, „lokal grün“), sondern die Ursache behoben. Zeitgrenzen (`expect`, Test, Job) nur mit Trace und Begründung in der Commit-Nachricht anheben.
+- Animationen respektieren `prefers-reduced-motion` (Animation 1 ms, kein Konfetti, keine Übergänge).
+- Das Spiel bleibt schlank (Bundle-Gate `scripts/verify-bundles.ts`): kein Three.js und kein WebGL; was nicht sofort gebraucht wird (Anmeldung des Service Workers, Konfetti), kommt per `import()` mit `later()` nach. Seiten außer dem Spiel (404) laden kein Spiel und höchstens 32 KB JavaScript.
+- Grenzen mit Luft statt Tretmühle (Bundle-Gate, `PRECACHE_BUDGET`, Größen-Grenzen in `eslint.config.js`): Byte-Budgets liegen bei gemessen + gut 10 %. Angehoben wird erst, wenn weniger als 3 % Luft bleiben, dann wieder auf gemessen + 10 %, mit einem Satz Begründung in der Commit-Nachricht. Neben den Zahlen steht nur der letzte Messwert. `scripts/guards.test.ts` prüft die Luft.
+- Der Löser läuft synchron im Haupt-Thread mit festen Grenzen. Tests prüfen Arbeit (bekannte Stellungen), nie Wanduhrzeit.
+- Der Service Worker gehört dem Spiel (`scope` `/`) und wird nur von der Spielseite angemeldet, mit `updateViaCache: 'none'`. `skipWaiting` und Neuladen nur auf Bitte des Spiels in einem sicheren Moment (Start, Levelwahl, gesperrte Lektion, Einstellungen, nach „Geschafft!“; Entscheidungen in `pwa-update.ts`), nie mitten in einer Lektion. Alte Caches löscht erst die aktive neue Version, und nur, wenn keine Spielseite mehr offen ist. Die Liste der gespeicherten Dateien entsteht beim Build, nie von Hand. Das Manifest legt die Drehung nicht fest. `storage.persist()` nur als installierte App.
+- Keine Navigation per View Transitions (`ClientRouter`): Bildschirme wechseln per Hash in der einen Seite (`ks-router.ts`).
+- TypeScript prüft jeden Index-Zugriff (`noUncheckedIndexedAccess`): fehlende Einträge behandeln. `!` nur, wo die Stelle selbst zeigt, dass der Eintrag existiert, und in Tests.
+- Speichern nur im `localStorage` mit dem Präfix `kistenschieber.` über `ks-save.ts` (einzige Ausnahme: der Zeitpunkt des letzten Update-Neuladens in `sessionStorage`, `pwa-register.ts`); jeder Wert wird beim Lesen geprüft, jeder Zugriff fängt Fehler ab. Alle Schlüssel stehen in der Spec („Speichern“); ein neuer Schlüssel kommt dorthin und in die Datenschutzerklärung im Repo `website`. Ändert sich das Format, gehört eine Migration in `ks-save.ts` mit Test.
+- Laufzeit der Unit-Tests (`vitest.config.ts`): Frist 60 s je Test und 120 s je Hook, nur gegen Hänger; keine eigene Frist im Test.
+- Neue Browser-Tests nutzen `e2e/helpers.ts` (`openGame`/`reloadGame` warten auf `settled`, Test-Uhr `__KS_TEST` mit `render(page, n)`) und warten nie auf Uhrzeit (`waitForTimeout`) oder eine Zahl von Bildern, sondern auf einen Zustand (ESLint verbietet `waitForTimeout`, `frames`/`waitFrames` und `goto('/')` außerhalb der Helfer). Keine eigene Frist im Test (`test.setTimeout`), außer `e2e/pwa-update.spec.ts` (echte Abläufe: zwei Fassungen, Installation, Neuladen; 60 s je Test und Polls bis 30 s, nur gegen Hänger). Ein neues Playwright-Projekt kommt im selben Commit in einen Browser-Job von deploy.yml (`gates:ci` prüft das).
+- Pipeline (`.github/workflows/deploy.yml`) in parallelen Jobs: `static`, `coverage`, `build` (mit `verify`), `e2e-site` (Projekt `site`), `e2e-game` (`game`, `pwa-update`) mit Blob-Berichten, `e2e-merge` (ein HTML-Bericht, wackelige Tests in die Zusammenfassung, kein Gate), `guard-gates` (Name `Guard-Gates`, einziger Pflicht-Check im Ruleset `protect main`; neue Gate-Jobs dort unter `needs`), `deploy` nur auf main nach `Guard-Gates`. Jeder Job hat seine Frist nach der 2,5×-Regel mit Untergrenze (Kommentar über `jobs:`). Neue Actions auf den vollen Commit-SHA pinnen, Version als Kommentar.
+- Arbeitsweise mit Issues und Pull Requests: Was umgesetzt wird, steht als Issue im Repo (Entwürfe liegen im Artefakt, nicht im Repo). Jedes Feature und jeder Fehler bekommt einen eigenen Branch (`feat/<nr>-<kurz>`, `fix/<nr>-<kurz>`, nur Doku: `docs/<kurz>`); auf `main` wird nicht direkt committet. Auf dem Branch entsteht das Feature in einzelnen Commits je Schritt. Ist es fertig, wird der Branch gepusht und ein Pull Request mit `Closes #<nr>` in der Beschreibung angelegt. Das Gate bleibt der lokale CI-nahe Lauf (`npm run gates:ci`) vor dem Push; die Pipeline des Pull Requests ist die zweite Prüfung, sie ersetzt den lokalen Lauf nicht. Sind alle Gates der Pipeline grün, mergt Claude den Pull Request selbst (Merge-Commit, Branch danach löschen); erst das löst den Deploy aus. Ist ein Gate rot, wird nicht gemergt, sondern die Ursache auf dem Branch behoben. Aufgaben im Issue werden beim Erledigen abgehakt.
+- CI-naher Lauf (`npm run gates:ci`): Bevor dem Nutzer ein Feature als fertig gemeldet wird und vor jedem Push eines Stapels muss er auf dem finalen HEAD grün sein, auch nach Merges (der Pre-Push-Hook prüft `.ci-local-ok`). Lokale Läufe auf vielen Kernen sagen nichts über den Runner. Ein roter oder wackliger Lauf wird nie wegerklärt („Flake“, „lokal grün“), sondern die Ursache behoben. Zeitgrenzen (`expect`, Test, Job) nur mit Trace und Begründung in der Commit-Nachricht anheben.
+- Impressum (larmic.de) und Datenschutz (www.mitwachsen-spiele.de/datenschutz/) liegen außerhalb. Was das Spiel im Browser speichert (localStorage `kistenschieber.*`, sessionStorage für den Zeitpunkt des letzten Update-Neuladens, Caches `kistenschieber-*`, dauerhafter Speicher), muss die Datenschutzerklärung im Repo `website` nennen.

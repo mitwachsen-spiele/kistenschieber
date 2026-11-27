@@ -10,14 +10,9 @@
   --gold-dark: #b46a0c;
   --paper: #fffdf7; /* Inhaltspanel */
   --muted: #4b5563; /* Unterzeilen */
-  --error: #a3221b; /* Welt löschen im Spielmenü */
   --dirt: #6e4a30; /* Fallback hinter der Erdtextur */
   --dirt-shade: rgba(43, 26, 15, 0.4);
   --stone-shade: rgba(20, 22, 28, 0.62);
-
-  /* Holz: Welten im Spielmenü */
-  --wood-bg: #f3ead6;
-  --wood-frame: #b3a385;
 
   /* Schriften */
   --font-pixel: 'Pixelify Sans', 'Courier New', monospace;
