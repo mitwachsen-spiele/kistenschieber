@@ -48,6 +48,10 @@ export const countText = (moves: number): string => (moves === 1 ? '1 Zug' : `${
 /** Name einer Lektion, auch Titel im Spiel */
 export const lessonName = (lesson: Pick<Lesson, 'n' | 'title'>): string => `Lektion ${lesson.n}: ${lesson.title}`;
 
+/** Beschriftung des Spielfelds */
+export const fieldLabel = (lesson: Pick<Lesson, 'n' | 'title'>): string =>
+  `${lessonName(lesson)}. Antippen, Wischen oder Pfeiltasten bewegen die Figur.`;
+
 /** Großer Knopf nach dem Sieg: weiter zur nächsten Lektion, nach der letzten zur Levelwahl (Level kommen später) */
 export const nextText = (n: number): string => (isFinale(n) ? 'Zur Levelwahl' : `Weiter zu Lektion ${n + 1}`);
 

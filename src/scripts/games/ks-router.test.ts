@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lessonHash, route } from './ks-router';
+import { lessonHash, nextHash, route } from './ks-router';
 
 const COUNT = 15;
 
@@ -58,5 +58,11 @@ describe('route', () => {
 
   it('Ziel der Lektion', () => {
     expect(lessonHash(2)).toBe('#lektion-2');
+  });
+
+  it('nach dem Sieg zur nächsten Lektion, nach der letzten zur Levelwahl', () => {
+    expect(nextHash(1, COUNT)).toBe('#lektion-2');
+    expect(nextHash(14, COUNT)).toBe('#lektion-15');
+    expect(nextHash(15, COUNT)).toBe('#level');
   });
 });

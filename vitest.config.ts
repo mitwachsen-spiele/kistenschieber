@@ -19,6 +19,7 @@ export default defineConfig({
         'src/data/games/**/*.ts',
         'src/scripts/games/ks-save.ts',
         'src/scripts/games/ks-router.ts',
+        'src/scripts/games/ks-input.ts',
         'scripts/{bundles,dist}.ts',
       ],
       reporter: [['text', { skipFull: true }], 'text-summary'],

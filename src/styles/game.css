@@ -476,3 +476,198 @@ html:not(.touch) .touch-only {
     display: none;
   }
 }
+
+/* ---------- Spielfeld ----------
+   Ein Container füllt den ganzen Bildschirm (100dvh, Safe Areas); sein Seitenverhältnis entscheidet, ob die Knöpfe
+   unter (hochkant) oder neben dem Feld (quer, ab 6/5) liegen. Niedrig (≤ 430 px) wird alles enger, schmal (≤ 380 px)
+   werden die Knöpfe schmaler. Schild und Zähler bleiben auch dunkel hell. Kein Ziehen der Seite, kein Markieren, kein
+   Doppeltipp-Zoom. Wie im Entwurf (CSS „Spiel“) */
+body.playing {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+.ks.playing {
+  padding: 0;
+}
+.screen.play {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  max-width: none;
+  padding: max(4px, env(safe-area-inset-top, 0px)) max(4px, env(safe-area-inset-right, 0px))
+    max(4px, env(safe-area-inset-bottom, 0px)) max(4px, env(safe-area-inset-left, 0px));
+  gap: 0;
+}
+.game {
+  container-type: size;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  background: linear-gradient(var(--sky-deep), var(--sky-low));
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+/* Am Schreibtisch mit Rahmen und etwas Abstand; auf Handy und Tablet randlos */
+@media (min-width: 901px) and (pointer: fine) {
+  .screen.play {
+    padding: 16px;
+  }
+  .game {
+    box-shadow: var(--ks-px);
+  }
+}
+.game button,
+.game a {
+  touch-action: manipulation;
+}
+.gin {
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: 'bar' 'field' 'msg' 'ctl';
+  gap: 10px;
+  padding: 10px 12px 12px;
+}
+.gbar {
+  grid-area: bar;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.btn.gbtn {
+  min-height: 48px;
+  padding: 8px 18px;
+}
+.screen .gtitle {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gcount {
+  font-family: var(--font-pixel);
+  font-size: 0.95rem;
+  font-weight: 500;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 6px 10px;
+  box-shadow: var(--ks-px);
+  white-space: nowrap;
+}
+.field {
+  grid-area: field;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.field canvas {
+  display: block;
+  max-width: 100%;
+  touch-action: none;
+  cursor: pointer;
+  image-rendering: pixelated;
+}
+.gmsg {
+  grid-area: msg;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+.sign {
+  justify-self: center;
+  margin: 0;
+  min-height: 2.6em;
+  max-width: 60ch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--ks-px);
+  font-size: 1.02rem;
+  font-weight: 700;
+  padding: 6px 16px;
+}
+.sign.warn {
+  background: var(--warn-soft);
+}
+.sign.win {
+  background: var(--ok-soft);
+}
+.after {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+.after:not(:has(> :not([hidden]))) {
+  display: none;
+}
+.gctl {
+  grid-area: ctl;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 14px;
+}
+.gin.left .gctl {
+  flex-direction: row-reverse;
+}
+.gacts {
+  display: grid;
+  gap: 10px;
+}
+.gacts .btn {
+  min-width: 112px;
+  min-height: 56px;
+}
+@container (min-aspect-ratio: 6/5) {
+  .gin {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'bar bar' 'field ctl' 'msg ctl';
+  }
+  .gin.left {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: 'bar bar' 'ctl field' 'ctl msg';
+  }
+  .gctl,
+  .gin.left .gctl {
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+  }
+}
+@container (max-height: 430px) {
+  .gin {
+    gap: 6px;
+    padding: 6px 10px 8px;
+  }
+  .gacts {
+    grid-auto-flow: column;
+  }
+  .gacts .btn {
+    min-width: 0;
+    min-height: 48px;
+    padding: 6px 12px;
+  }
+  .btn.gbtn {
+    min-height: 44px;
+  }
+}
+@container (max-width: 380px) {
+  .gacts .btn {
+    min-width: 92px;
+  }
+}

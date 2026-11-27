@@ -118,3 +118,43 @@ export const drawn = (page: Page, selector: string) =>
     const px = cv.getContext('2d')?.getImageData(cv.width >> 1, cv.height >> 1, 1, 1).data;
     return cv.width > 0 && cv.height > 0 && (px?.[3] ?? 0) > 0;
   });
+
+/** Pfeiltaste je Buchstabe einer Lösung in LURD (Großbuchstabe = Schub, gedrückt wird dieselbe Taste) */
+const LURD_KEY: Record<string, string> = { u: 'ArrowUp', d: 'ArrowDown', l: 'ArrowLeft', r: 'ArrowRight' };
+
+/**
+ * Züge in LURD spielen, in einem Rutsch: je Zug ein keydown am Element mit dem Fokus, dann so viele Bilder der
+ * Test-Uhr, bis der Schritt fertig ist (der längste dauert 170 ms). Für lange Lösungen; einzelne Tasten im Test mit
+ * `page.keyboard.press` und `render`
+ */
+export const playLurd = (page: Page, lurd: string) =>
+  game(page).evaluate(
+    (node, [moves, keys, gap]) => {
+      const el = node as unknown as { frame(): void };
+      const clock = (window as unknown as { __KS_TEST: { ms: number } }).__KS_TEST;
+      for (const ch of moves) {
+        const key = keys[ch.toLowerCase()];
+        const target = document.activeElement ?? document.body;
+        target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+        for (let i = 0; i < 4; i++) {
+          clock.ms += gap;
+          el.frame();
+        }
+      }
+    },
+    [lurd, LURD_KEY, FRAME_MS] as const,
+  );
+
+/** Wie viele Pixel der Canvas fast genau diese Farbe haben (je Kanal ± 6) */
+export const colourCount = (page: Page, selector: string, [r, g, b]: readonly [number, number, number]) =>
+  page.locator(selector).evaluate(
+    (node, [cr, cg, cb]) => {
+      const cv = node as HTMLCanvasElement;
+      const d = cv.getContext('2d')?.getImageData(0, 0, cv.width, cv.height).data ?? new Uint8ClampedArray();
+      let n = 0;
+      for (let i = 0; i < d.length; i += 4)
+        if (Math.abs(d[i]! - cr) <= 6 && Math.abs(d[i + 1]! - cg) <= 6 && Math.abs(d[i + 2]! - cb) <= 6) n++;
+      return n;
+    },
+    [r, g, b] as const,
+  );

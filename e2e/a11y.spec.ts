@@ -2,7 +2,8 @@
 // e2e/site.spec.ts). Das Gate fällt bei jedem Verstoß; die Liste nennt Regel, Wirkung und betroffene Elemente.
 // Geprüft wird die ruhende Seite (reduzierte Bewegung).
 import { expect, test } from '@playwright/test';
-import { openGame, violations } from './helpers';
+import { LESSONS } from '../src/data/games/lessons';
+import { openGame, playLurd, violations } from './helpers';
 
 test.use({ contextOptions: { reducedMotion: 'reduce' } });
 
@@ -49,6 +50,26 @@ for (const colorScheme of ['light', 'dark'] as const)
       for (let n = 1; n <= 15; n++) store[`skip.e${n}`] = true;
       await openGame(page, { hash: '#level', store });
       await expect(page.locator('[data-ks="intro-pill"]')).toHaveText('abgeschlossen');
+      expect(await violations(page)).toEqual([]);
+    });
+
+    test('Barrierefrei: Spielfeld', async ({ page }) => {
+      await openGame(page, { hash: '#lektion-1' });
+      await expect(page.getByRole('heading', { level: 2, name: 'Lektion 1: Erster Schubs' })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+    });
+
+    test('Barrierefrei: Spielfeld nach dem Sieg', async ({ page }) => {
+      await openGame(page, { hash: '#lektion-1' });
+      await playLurd(page, LESSONS[0]!.sol);
+      await expect(page.getByRole('link', { name: 'Weiter zu Lektion 2' })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+    });
+
+    test('Barrierefrei: Spielfeld mit Warnung', async ({ page }) => {
+      await openGame(page, { hash: '#lektion-4', store: { 'skip.e1': true, 'skip.e2': true, 'skip.e3': true } });
+      await playLurd(page, 'U');
+      await expect(page.locator('[data-ks="sign"]')).toHaveClass('sign warn');
       expect(await violations(page)).toEqual([]);
     });
 

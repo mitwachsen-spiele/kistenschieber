@@ -34,3 +34,6 @@ export function route(hash: string, count: number): Route {
 
 /** Ziel des Knopfs „Weiterspielen“ und „Zurück zum Spiel“ */
 export const lessonHash = (n: number): string => `#lektion-${n}`;
+
+/** Ziel nach dem Sieg und beim Überspringen: die nächste Lektion, nach der letzten die Levelwahl (Level kommen später) */
+export const nextHash = (n: number, count: number): string => (n < count ? lessonHash(n + 1) : '#level');

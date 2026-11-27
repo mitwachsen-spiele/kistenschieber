@@ -2,13 +2,19 @@
 // Das Spiel: alle Bildschirme als statisches HTML in <ks-kistenschieber> (Start, Levelwahl, Einstellungen, Spielfeld).
 // Die Komponente (scripts/games/ks-kistenschieber.ts) zeigt je Hash einen davon. Ohne JavaScript lesen sich Start und
 // Lektionsliste als Dokument; Einstellungen und Spielfeld bleiben verborgen, an ihrer Stelle steht ein Hinweis.
+// Das Spielfeld steht mit Lektion 1 im HTML; ks-game.ts setzt beim Öffnen einer Lektion Titel, Schild und Knöpfe.
 // Texte wörtlich aus dem Entwurf „Kistenschieber“.
 import '../styles/game.css';
 import { parseLevel } from '../lib/games/sokoban/level';
 import { LESSONS } from '../data/games/lessons';
 import {
+  GAME_BUTTONS,
   LOCKED,
   cardTag,
+  countText,
+  fieldLabel,
+  lessonName,
+  nextText,
   continueText,
   introPill,
   lockedGo,
@@ -21,6 +27,7 @@ import { CHAPTERS, TEASER, chapterName, chapterRange } from '../data/games/tease
 import { SETTINGS_DEFAULT } from '../scripts/games/ks-save';
 
 const first = LESSONS[0]!;
+const second = LESSONS[1]!;
 const cards = LESSONS.map((l) => ({ ...l, tag: cardTag(parseLevel(l.xsb).boxes.length, l.moves) }));
 const { drehung, neigung } = SETTINGS_DEFAULT;
 ---
@@ -182,7 +189,52 @@ const { drehung, neigung } = SETTINGS_DEFAULT;
     </div>
   </section>
 
-  <section id="spiel" class="screen play" hidden></section>
+  <section id="spiel" class="screen play" aria-labelledby="game-title" hidden>
+    <div class="game">
+      <div class="gin">
+        <div class="gbar">
+          <button class="btn gbtn" type="button" aria-haspopup="dialog" data-ks="menu">
+            {GAME_BUTTONS.menu}
+          </button>
+          <h2 class="gtitle" id="game-title" data-ks="title">
+            {lessonName(first)}
+          </h2>
+          <span class="gcount" data-ks="count">
+            {countText(0)}
+          </span>
+        </div>
+        <div class="field">
+          <canvas role="img" tabindex="0" aria-label={fieldLabel(first)}></canvas>
+        </div>
+        <div class="gmsg">
+          <p class="sign" aria-live="polite" data-ks="sign">
+            {first.intro}
+          </p>
+          <div class="after">
+            <a class="btn big primary" href={`#${second.id}`} data-ks="next" hidden>
+              {nextText(first.n)}
+            </a>
+            <button class="btn big" type="button" data-ks="again" hidden>
+              {GAME_BUTTONS.again}
+            </button>
+            <button class="btn big" type="button" data-ks="offer" hidden>
+              {GAME_BUTTONS.offer}
+            </button>
+          </div>
+        </div>
+        <div class="gctl">
+          <div class="gacts">
+            <button class="btn big" type="button" data-ks="undo">
+              {GAME_BUTTONS.undo}
+            </button>
+            <button class="btn big" type="button" data-ks="tip">
+              {GAME_BUTTONS.tip}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 </ks-kistenschieber>
 
 <script>

@@ -1,4 +1,4 @@
-// Die Spielseite ohne Spielfeld: Startbildschirm, Einstellungen, Bildschirme per Hash und ohne JavaScript, dazu die
+// Die Spielseite ohne Spielfeld (das prüft e2e/game.spec.ts): Startbildschirm, Einstellungen, Bildschirme per Hash und ohne JavaScript, dazu die
 // 404-Seite. Ohne Fehler in der Konsole, ohne seitliches Scrollen, nicht im Suchindex.
 import { expect, test, type Page } from '@playwright/test';
 import { LESSONS } from '../src/data/games/lessons';
@@ -184,7 +184,7 @@ test.describe('Bildschirme per Hash', () => {
     await screen(page, 'start').getByRole('link', { name: 'Level wählen' }).click();
     await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeFocused();
     await page.locator('#lektion-1').click();
-    await expect(page.locator('#lektion-1')).toBeFocused();
+    await expect(page.locator('#spiel canvas')).toBeFocused();
     await page.evaluate(() => (location.hash = '#level'));
     await page.locator('#lektion-3').click();
     await expect(page.getByRole('heading', { level: 2, name: 'Diese Lektion ist noch zu' })).toBeFocused();
@@ -206,14 +206,6 @@ test.describe('Bildschirme per Hash', () => {
     await expect(screen(page, 'start')).toBeHidden();
     await expect(screen(page, 'level')).toBeHidden();
     await expect(game(page)).not.toHaveClass(/\bready\b/);
-  });
-
-  test('eine freie #lektion-4 zeigt vorerst die Levelwahl mit ihrer Karte', async ({ page }) => {
-    await openGame(page, { hash: '#lektion-4', store: { 'skip.e1': true, 'skip.e2': true, 'skip.e3': true } });
-    await expect(screen(page, 'gesperrt')).toBeHidden();
-    await expect(page).toHaveTitle('Lektion 4 · Kistenschieber');
-    await expect(page.locator('#lektion-4')).toBeInViewport();
-    await expect(page.locator('#lektion-4')).toContainText('4. Ecken sind Fallen');
   });
 });
 
@@ -323,7 +315,9 @@ test.describe('Levelwahl', () => {
     await expect(locked.getByRole('link', { name: 'Zu Lektion 2' })).toHaveAttribute('href', '#lektion-2');
     await locked.getByRole('link', { name: 'Zu Lektion 2' }).click();
     await expect(screen(page, 'gesperrt')).toBeHidden();
-    await expect(card(page, 2)).toBeFocused();
+    await expect(
+      screen(page, 'spiel').getByRole('heading', { level: 2, name: 'Lektion 2: Um die Ecke' }),
+    ).toBeVisible();
     expect(errors).toEqual([]);
   });
 

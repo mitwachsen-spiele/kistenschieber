@@ -13,6 +13,7 @@ import {
   cardTag,
   continueText,
   countText,
+  fieldLabel,
   isFinale,
   lessonName,
   nextText,
@@ -83,6 +84,10 @@ describe('Zähler, Titel, Knöpfe', () => {
 
   it('Name „Lektion N: Titel“', () => {
     expect(lessonName(lesson(1))).toBe('Lektion 1: Erster Schubs');
+  });
+
+  it('Beschriftung des Spielfelds wörtlich', () => {
+    expect(fieldLabel(lesson(3))).toBe('Lektion 3: Zwei Kisten. Antippen, Wischen oder Pfeiltasten bewegen die Figur.');
   });
 
   it('nach dem Sieg weiter zur nächsten Lektion, nach Lektion 15 „Zur Levelwahl“', () => {

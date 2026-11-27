@@ -15,7 +15,7 @@ const GAME_CODE = /ks-kistenschieber|serviceWorker/;
 const THREE = /WebGLRenderer|three\.module|webgl/;
 
 export const RULES: Rule[] = [
-  { name: 'Spiel', pages: /^index\.html$/, budget: 32.6 * 1024, forbidden: THREE }, // gemessen 29,6 KB (30274 B, Schritt 5)
+  { name: 'Spiel', pages: /^index\.html$/, budget: 47 * 1024, forbidden: THREE }, // gemessen 42,7 KB (43745 B, Schritt 6)
   {
     name: 'Seiten ohne Spiel',
     pages: /^(?!index\.html$)/,
