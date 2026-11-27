@@ -107,9 +107,17 @@ export const render = (page: Page, n = 1, ms = FRAME_MS) =>
 /** Ein Wert aus dem Speicher des Spiels (Schlüssel ohne Präfix), roh wie gespeichert */
 export const stored = (page: Page, key: string) => page.evaluate((k) => localStorage.getItem(k), PREFIX + key);
 
-/** Bildinhalt einer Canvas (zum Vergleich vor und nach einer Änderung) */
+/**
+ * Fingerabdruck des Bildinhalts einer Canvas (SHA-256 der PNG-Daten), zum Vergleich vor und nach einer Änderung.
+ * Nur der Hash, nie die Data-URL selbst: Playwright schreibt die Werte jedes `expect` in den Bericht, ganze Bilder
+ * machten den Blob-Bericht mehrere MB groß (der Job e2e-merge konnte ihn dann nicht mehr laden).
+ */
 export const pixels = (page: Page, selector: string) =>
-  page.locator(selector).evaluate((cv) => (cv as HTMLCanvasElement).toDataURL());
+  page.locator(selector).evaluate(async (cv) => {
+    const data = new TextEncoder().encode((cv as HTMLCanvasElement).toDataURL());
+    const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', data));
+    return Array.from(hash, (b) => b.toString(16).padStart(2, '0')).join('');
+  });
 
 /** Ist die Mitte der Canvas bemalt (deckend)? */
 export const drawn = (page: Page, selector: string) =>
