@@ -7,9 +7,13 @@ import { defineConfig, devices } from '@playwright/test';
 const SITE = /(site|installable)\.spec\.ts$/;
 /** Specs, die im Spiel spielen oder es prüfen (Projekt `game`) */
 const GAME = /(game|touch|a11y|pwa)\.spec\.ts$/;
+/** Spec der App-Updates (Projekt `pwa-update`) */
+const UPDATE = /pwa-update\.spec\.ts$/;
 
 export default defineConfig({
   testDir: 'e2e',
+  // Zweite Fassung der Seite für den Test der App-Updates, abgeleitet aus dist/ (e2e/versions.ts)
+  globalSetup: './e2e/versions.ts',
   fullyParallel: true,
   // Höchstens 2 Worker, auch lokal: Der GitHub-Runner hat 4 vCPUs; Container melden alle Kerne des Wirts.
   workers: 2,
@@ -20,8 +24,13 @@ export default defineConfig({
   use: { baseURL: 'http://localhost:4321', trace: 'retain-on-failure' },
   // Jedes Projekt steht auch als --project=… in einem Browser-Job von .github/workflows/deploy.yml (geprüft von gates:ci)
   projects: [
-    { name: 'site', testMatch: SITE, use: { ...devices['Desktop Chrome'] } },
-    { name: 'game', testMatch: GAME, use: { ...devices['Desktop Chrome'] } },
+    // Ohne Service Worker (wie im Weltenbummler): Die Tests prüfen Seite und Spiel, nicht den Speicher, und auf 2 Kernen
+    // spart das je Test das Vorab-Speichern; Navigationen bleiben für page.route erreichbar. Fast jeder Test von `site`
+    // öffnet das Spiel auf /. Nur e2e/pwa.spec.ts lässt ihn zu
+    { name: 'site', testMatch: SITE, use: { ...devices['Desktop Chrome'], serviceWorkers: 'block' } },
+    { name: 'game', testMatch: GAME, use: { ...devices['Desktop Chrome'], serviceWorkers: 'block' } },
+    // App-Updates mit zwei Fassungen, teils zwei Tabs je Test: einzeln
+    { name: 'pwa-update', testMatch: UPDATE, workers: 1, use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: { command: 'node e2e/serve.ts', url: 'http://localhost:4321', reuseExistingServer: !process.env.CI },
 });

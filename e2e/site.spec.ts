@@ -355,12 +355,46 @@ test.describe('ohne JavaScript', () => {
   });
 });
 
-test('Spielseite ist nicht im Suchindex und meldet keinen Service Worker an', async ({ page }) => {
+test('Spielseite ist nicht im Suchindex, hat zwei Farben für die Browserleiste und verweist aufs Manifest', async ({
+  page,
+}) => {
   await openGame(page);
-  await page.waitForLoadState('load');
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
   await expect(page.locator('meta[name="theme-color"]')).toHaveCount(2);
-  expect(await page.evaluate(() => navigator.serviceWorker.getRegistrations().then((r) => r.length))).toBe(0);
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');
+  await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute('content', 'Kisten');
+});
+
+test('Manifest: installierbar als „Kistenschieber“, startet im Spiel, Icons mit der Kiste in den richtigen Größen', async ({
+  page,
+}) => {
+  const res = await page.request.get('/manifest.webmanifest');
+  expect(res.headers()['content-type']).toBe('application/manifest+json');
+  const m = (await res.json()) as {
+    name: string;
+    short_name: string;
+    start_url: string;
+    scope: string;
+    display: string;
+    theme_color: string;
+    orientation?: string;
+    icons: { src: string; sizes: string; purpose: string }[];
+  };
+  expect(m).toMatchObject({ name: 'Kistenschieber', short_name: 'Kisten', start_url: '/', scope: '/' });
+  expect(m.display).toBe('standalone');
+  expect(m.theme_color).toBe('#8dd0ee');
+  expect(m.orientation).toBeUndefined();
+  expect(m.icons.map((i) => `${i.src} ${i.sizes} ${i.purpose}`)).toEqual([
+    '/icon-192.png 192x192 any',
+    '/icon-512.png 512x512 any',
+    '/icon-maskable-512.png 512x512 maskable',
+  ]);
+  for (const icon of m.icons) {
+    const png = await page.request.get(icon.src);
+    expect(png.headers()['content-type']).toBe('image/png');
+    const body = await png.body();
+    expect(`${body.readUInt32BE(16)}x${body.readUInt32BE(20)}`).toBe(icon.sizes);
+  }
 });
 
 for (const width of [320, 390, 1280])

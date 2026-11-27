@@ -174,8 +174,8 @@ jobs:
       - name: Browser installieren
         run: npx playwright install --with-deps chromium
 
-      - name: Guard-Gate – Browser-Tests (Projekt game)
-        run: npx playwright test --project=game --reporter=github,blob
+      - name: Guard-Gate – Browser-Tests (Projekte game und pwa-update)
+        run: npx playwright test --project=game --project=pwa-update --reporter=github,blob
         env:
           PLAYWRIGHT_BLOB_OUTPUT_NAME: report-game.zip
 

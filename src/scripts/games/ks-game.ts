@@ -31,6 +31,7 @@ import { LESSONS, type Lesson } from '../../data/games/lessons';
 import { countText, fieldLabel, lessonName, nextText, signText } from '../../data/games/texts';
 import { type KeyAction, keepsKey, keyAction, padAngles, swipeDir, tapAt } from './ks-input';
 import { nextHash } from './ks-router';
+import { type GameMoment, SAFE_EVENT, WIN_MS } from './pwa-moment';
 import type { Host } from './ks-screens';
 import { renderWorld } from './render/world';
 
@@ -80,7 +81,7 @@ export class GameScreen {
     private readonly host: Host,
     /** neu zeichnen lassen (im nächsten Bild, mit Test-Uhr sofort) */
     private readonly request: () => void,
-    private readonly signal: AbortSignal,
+    signal: AbortSignal,
   ) {
     this.gin = need(root, '.gin');
     this.title = need(root, '[data-ks="title"]');
@@ -161,6 +162,12 @@ export class GameScreen {
     }
     this.sync();
     this.extras(true);
+  }
+
+  /** Für Updates der App (pwa-update.ts): „Geschafft!“ (selbst gelöst), Menü offen, wohin es danach weitergeht */
+  moment(): Pick<GameMoment, 'won' | 'menuOpen' | 'resume'> {
+    const won = this.g.won && !this.g.shownWin;
+    return { won, menuOpen: this.dialog.open, resume: won ? nextHash(this.lesson.n, LESSONS.length) : null };
   }
 
   /** Den Bildschirm verlassen: ein offenes Menü schließen */
@@ -293,6 +300,9 @@ export class GameScreen {
     if (g.solutionShown && !prev.solutionShown) markShown(kv, this.lesson.n);
     if (g.won && !prev.won) {
       recordWin(kv, this.lesson.n, { moves: g.moves, pushes: g.pushes, shown: g.shownWin });
+      // Selbst gelöst: ein sicherer Moment für eine neue Version der App, wenn das Konfetti verflogen ist (pwa-register.ts)
+      if (!g.shownWin)
+        this.root.dispatchEvent(new CustomEvent(SAFE_EVENT, { bubbles: true, detail: { after: WIN_MS } }));
       if (g.confetti && !g.reduce) {
         const x = this.extras(true);
         if (x) this.fx = x.burst(this.L, g.boxes, now);

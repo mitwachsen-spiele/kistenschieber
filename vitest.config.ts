@@ -15,13 +15,15 @@ export default defineConfig({
       // gehören dazu. browser-store.ts greift auf window zu und bleibt draußen wie im Weltenbummler
       include: [
         'src/lib/**/*.ts',
-        'src/data/site.ts',
+        'src/data/{site,pwa}.ts',
         'src/data/games/**/*.ts',
         'src/scripts/games/ks-save.ts',
         'src/scripts/games/ks-router.ts',
         'src/scripts/games/ks-input.ts',
         'src/scripts/games/wake-lock.ts',
-        'scripts/{bundles,dist}.ts',
+        'src/scripts/games/pwa-update.ts',
+        'src/scripts/games/pwa-moment.ts',
+        'scripts/{bundles,dist,pwa}.ts',
       ],
       reporter: [['text', { skipFull: true }], 'text-summary'],
       // Knapp unter dem gemessenen Stand: Sinkt die Abdeckung, fällt das Gate. Steigt sie, die Schwellen mitziehen.

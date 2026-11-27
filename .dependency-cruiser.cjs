@@ -3,6 +3,7 @@
 //   src/data      Inhalte und Konfiguration der Seite – nutzt lib, kennt keine Oberfläche
 //   src/scripts   Code im Browser – nur so viel lib wie nötig, nichts aus Node
 //   src/lib/games, src/data/games – Bausteine und Inhalte des Spiels (Regeln, Löser, Lektionen), laufen im Browser
+//   src/lib/pwa   Manifest und Service Worker der App – nur beim Build (Node)
 //   components, layouts, pages – Oberfläche, darf alles darunter nutzen
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -79,6 +80,14 @@ module.exports = {
       comment: 'sharp läuft nur beim Build.',
       from: { path: '^src/(scripts|lib/games|data/games)/', pathNot: '\\.test\\.ts$' },
       to: { path: 'sharp' },
+    },
+    {
+      name: 'pwa-lib-is-build-only',
+      severity: 'error',
+      comment:
+        'src/lib/pwa (Manifest, Liste und Quelltext des Service Workers) läuft nur beim Build in Node; Browser-Code und Spieldaten nutzen es nie.',
+      from: { path: '^src/(scripts|data/games)/', pathNot: '\\.test\\.ts$' },
+      to: { path: '^src/lib/pwa/' },
     },
     {
       name: 'no-test-in-production',

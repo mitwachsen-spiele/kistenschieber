@@ -1,7 +1,8 @@
 // Guard-Gate nach dem Build (Teil von npm run verify): Die Seiten bleiben schnell und ohne Ballast.
 // Die Spielseite (index.html) lädt das Spiel unter einem Budget mit Luft (gemessen + 10 %); Three.js und WebGL gibt es
-// nirgends, das Spiel zeichnet mit Canvas 2D. Alle anderen Seiten bleiben unter 32 KB, ohne Spielcode und ohne die
-// Anmeldung eines Service Workers. Vorbild: scripts/verify-bundles.ts in mitwachsen-spiele/weltenbummler.
+// nirgends, das Spiel zeichnet mit Canvas 2D. Was der Kern per import() nachlädt (Anmeldung des Service Workers samt
+// den Regeln für Updates, Konfetti), misst eine eigene Grenze. Alle anderen Seiten bleiben unter 32 KB, ohne Spielcode
+// und ohne die Anmeldung eines Service Workers. Vorbild: scripts/verify-bundles.ts in mitwachsen-spiele/weltenbummler.
 // Logik und Tests: scripts/bundles.ts, scripts/bundles.test.ts
 
 import { readFileSync, readdirSync } from 'node:fs';
@@ -15,7 +16,15 @@ const GAME_CODE = /ks-kistenschieber|serviceWorker/;
 const THREE = /WebGLRenderer|three\.module|webgl/;
 
 export const RULES: Rule[] = [
-  { name: 'Spiel', pages: /^index\.html$/, budget: 55.1 * 1024, forbidden: THREE }, // gemessen 50,1 KB (51295 B, Schritt 7)
+  { name: 'Spiel', pages: /^index\.html$/, budget: 55.7 * 1024, forbidden: THREE }, // gemessen 50,6 KB (51833 B, Schritt 8)
+  {
+    name: 'Nachgeladen vom Kern',
+    pages: /^index\.html$/,
+    // Kommt es schon beim Laden, meldet das Gate es (dann wäre es nicht nachgeladen)
+    parts: [{ chunks: /\/pwa-register\.[\w-]+\.js$/ }, { chunks: /\/ks-menu\.[\w-]+\.js$/ }],
+    budget: 3.2 * 1024, // gemessen 2,8 KB (2888 B, Schritt 8)
+    forbidden: THREE,
+  },
   {
     name: 'Seiten ohne Spiel',
     pages: /^(?!index\.html$)/,

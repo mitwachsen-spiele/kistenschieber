@@ -1,6 +1,7 @@
-// Favicon: ein Grasblock, beim Build erzeugt.
-import { iconSvg } from '../lib/voxel/icon';
+// Favicon: das App-Symbol (Kiste auf Wasserblau), beim Build erzeugt.
+import { blockIconSvg } from '../lib/voxel/icon';
+import { appIcon } from '../data/app-icon';
 
 export function GET() {
-  return new Response(iconSvg(), { headers: { 'Content-Type': 'image/svg+xml' } });
+  return new Response(blockIconSvg(64, appIcon('any')), { headers: { 'Content-Type': 'image/svg+xml' } });
 }

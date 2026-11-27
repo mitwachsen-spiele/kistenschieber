@@ -16,9 +16,7 @@ import { COUNT, type Host, LevelScreen, LockedScreen, SettingsScreen, StartScree
 import { GameScreen, type Spot } from './ks-game';
 import { watchTouch } from './ks-touch';
 import { type ScreenLock, watchWakeLock } from './wake-lock';
-
-/** Welcher Abschnitt zeigt den Bildschirm: eine freie Lektion das Spielfeld, eine gesperrte, warum sie zu ist */
-type Section = 'start' | 'level' | 'einstellungen' | 'gesperrt' | 'spiel';
+import { type GameMoment, type Screen as Section, SAFE_EVENT } from './pwa-moment';
 
 class KsKistenschieber extends HTMLElement {
   private globals: AbortController | null = null;
@@ -141,6 +139,14 @@ class KsKistenschieber extends HTMLElement {
       else this.section(id).querySelector<HTMLElement>('h1, h2')?.focus({ preventScroll: true });
     }
     this.request();
+    // Außerhalb einer Lektion ein sicherer Moment für eine neue Version der App (pwa-register.ts)
+    if (!playing) this.dispatchEvent(new CustomEvent(SAFE_EVENT, { bubbles: true }));
+  }
+
+  /** Für Updates der App (pwa-register.ts): Was im Spiel gerade los ist; entschieden wird in pwa-update.ts */
+  updateMoment(): GameMoment {
+    const none = { won: false, menuOpen: false, resume: null };
+    return { screen: this.shown, ...(this.shown === 'spiel' ? this.play.moment() : none) };
   }
 
   /** Für die Browser-Tests: wohin tippen, um ein Bodenfeld oder eine Kiste des Spielfelds zu treffen */

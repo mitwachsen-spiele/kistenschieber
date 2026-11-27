@@ -1,27 +1,23 @@
-// Vorschaubild für Messenger & Co. (og:image, 1200 × 630): Himmel, Wolken und rechts die schwebende Insel der Startseite
-// (Baum, Pilz, Brett), beim Build mit sharp in ein PNG gerendert.
+// Vorschaubild für Messenger & Co. (og:image, 1200 × 630): das App-Symbol im Breitformat, die Kiste auf Wasserblau
+// (Verlauf von oben nach unten), beim Build mit sharp in ein PNG gerendert.
 import sharp from 'sharp';
-import { ISLAND, cubeDefs, sceneSvg } from '../lib/voxel/blocks';
+import { isoBlock } from '../lib/games/oblique/svg-pen';
+import { appIcon } from '../data/app-icon';
 
 const W = 1200;
 const H = 630;
 
 export async function GET() {
-  const scene = sceneSvg(ISLAND);
-  const size = H - 60;
-  const sceneBox = `<svg x="${W - size - 90}" y="30" width="${size}" height="${size}" viewBox="${scene.viewBox}">${scene.uses}</svg>`;
-  const cloud = (x: number, y: number, w: number) =>
-    `<g fill="#ffffff" opacity="0.92"><rect x="${x}" y="${y}" width="${w}" height="28"/><rect x="${x + w * 0.2}" y="${y - 22}" width="${w * 0.5}" height="22"/></g>`;
-
+  const { faces, cam, from, to } = appIcon('any');
+  const b = isoBlock(cam, faces, 1, 'og');
+  // Die Kiste 70 % so hoch wie das Bild, mittig und wie im Symbol etwas tiefer
+  const h = H * 0.7;
+  const w = (h * b.width) / b.height;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-<defs>${cubeDefs()}</defs>
-<rect width="${W}" height="${H * 0.36}" fill="#79c7ea"/>
-<rect y="${H * 0.36}" width="${W}" height="${H * 0.32}" fill="#8dd0ee"/>
-<rect y="${H * 0.68}" width="${W}" height="${H * 0.32}" fill="#a6dbf2"/>
-${cloud(60, 120, 180)}${cloud(330, 70, 220)}${cloud(150, 430, 140)}${cloud(1080, 560, 90)}
-${sceneBox}
+<defs><linearGradient id="og-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient>${b.defs}</defs>
+<rect width="${W}" height="${H}" fill="url(#og-bg)"/>
+<svg x="${(W - w) / 2}" y="${(H - h) / 2 + H * 0.02}" width="${w}" height="${h}" viewBox="0 0 ${b.width} ${b.height}">${b.body}</svg>
 </svg>`;
-
   const png = await sharp(Buffer.from(svg)).png().toBuffer();
   return new Response(new Uint8Array(png), { headers: { 'Content-Type': 'image/png' } });
 }
