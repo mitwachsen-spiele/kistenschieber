@@ -146,6 +146,7 @@ Alles liegt nur im `localStorage` des Geräts, jeder Schlüssel mit dem Präfix 
 | `kistenschieber.drehung` | Zahl 0–45 | Drehung der Kamera, Standard 20 |
 | `kistenschieber.neigung` | Zahl 20–80 | Neigung der Kamera, Standard 50 |
 | `kistenschieber.hand` | `"rechts"` oder `"links"` | Seite des Steuerkreuzes, Standard rechts |
+| `kistenschieber.ton` | `"an"` oder `"aus"` | Töne des Spiels, Standard an |
 | `kistenschieber.best.eN` | `{ "moves": …, "pushes": … }` | Bestwert der Lektion N: ganze Zahlen, mindestens ein Zug, nicht mehr Schübe als Züge |
 | `kistenschieber.skip.eN` | `true` | Lektion N übersprungen |
 | `kistenschieber.shown.eN` | `true` | Lektion N mit Lösung gesehen |
