@@ -1,5 +1,5 @@
 // Spielbildschirm: verbindet den reinen Spielzustand (lib/games/sokoban/state.ts) mit dem statischen HTML aus
-// KistenschieberGame.astro. Tasten, Tippen, Wischen, Steuerkreuz, Knöpfe und Takt erzeugen neue Zustände; danach zeigt
+// KistenschieberGame.astro. Tasten, Tippen, Steuerkreuz, Knöpfe und Takt erzeugen neue Zustände; danach zeigt
 // der Bildschirm Zähler, Schild und Knöpfe nach dem Sieg und zeichnet das Feld. Nebenwirkungen eines Zustandswechsels
 // macht nur diese Datei: Bestwert und „mit Lösung gesehen“ speichern, Konfetti werfen (nicht bei weniger Bewegung, nie
 // nach vorgespielter Lösung) und wieder wegnehmen.
@@ -29,7 +29,7 @@ import {
 import { KAJE_DECO } from '../../data/games/kaje';
 import { LESSONS, type Lesson } from '../../data/games/lessons';
 import { countText, fieldLabel, lessonName, nextText, signText } from '../../data/games/texts';
-import { type KeyAction, keepsKey, keyAction, padAngles, swipeDir, tapAt } from './ks-input';
+import { type KeyAction, keepsKey, keyAction, isTap, padAngles, tapAt } from './ks-input';
 import { nextHash } from './ks-router';
 import { type GameMoment, SAFE_EVENT, WIN_MS } from './pwa-moment';
 import type { Host } from './ks-screens';
@@ -130,7 +130,8 @@ export class GameScreen {
       a.addEventListener('click', () => this.dialog.close(), { signal });
     for (const b of this.pad.querySelectorAll<HTMLButtonElement>('button[data-pad]'))
       b.addEventListener('click', () => this.walk(b.dataset.pad as DirKey), { signal });
-    // Antippen und Wischen über Pointer-Events: kurzer Weg = Tippen, langer = ein Schritt in Wischrichtung
+    // Antippen über Pointer-Events: kurzer Weg = Tippen; ein Wisch tut nichts, kein preventDefault – der Finger darf die
+    // Seite scrollen (CSS touch-action: manipulation; beginnt der Browser zu scrollen, kommt pointercancel)
     const cv = this.canvas;
     const opts = { signal };
     cv.addEventListener('pointerdown', (e) => (this.down = { x: e.clientX, y: e.clientY, id: e.pointerId }), opts);
@@ -216,7 +217,7 @@ export class GameScreen {
     else if (g.auto) this.apply(stopAuto(g));
   }
 
-  /** Ein Schritt (Taste, Wischen, Steuerkreuz); beendet ein Vorspielen */
+  /** Ein Schritt (Taste, Steuerkreuz); beendet ein Vorspielen */
   private walk(d: DirKey) {
     this.apply(key(this.g, DIRS[d], performance.now()));
   }
@@ -225,8 +226,7 @@ export class GameScreen {
     const down = this.down;
     if (!down || down.id !== e.pointerId) return;
     this.down = null;
-    const d = swipeDir(e.clientX - down.x, e.clientY - down.y, screenDirs(this.host.camera()));
-    if (d) return this.walk(d);
+    if (!isTap(e.clientX - down.x, e.clientY - down.y)) return;
     // Erst zeichnen: Hat sich das Feld eben verschoben (Steuerkreuz nach dem ersten Antippen), passen die Treffer
     const now = performance.now();
     this.draw(now);

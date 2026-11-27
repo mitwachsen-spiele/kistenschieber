@@ -62,7 +62,7 @@ test.describe('Spielfeld', () => {
     await expect(s.getByRole('button', { name: 'Menü' })).toHaveAttribute('aria-haspopup', 'dialog');
     await expect(count(page)).toHaveText('0 Züge');
     const field = s.getByRole('img', {
-      name: 'Lektion 1: Erster Schubs. Antippen, Wischen oder Pfeiltasten bewegen die Figur.',
+      name: 'Lektion 1: Erster Schubs. Antippen oder Pfeiltasten bewegen die Figur.',
     });
     await expect(field).toBeVisible();
     await expect(field).toHaveAttribute('tabindex', '0');
@@ -182,6 +182,7 @@ test.describe('Spielfeld', () => {
 
   for (const [width, height] of [
     [390, 844],
+    [375, 560],
     [667, 375],
   ] as const)
     test(`${width}×${height}: Schild und Knöpfe nehmen dem Feld keinen Platz und liegen nie auf der Insel`, async ({

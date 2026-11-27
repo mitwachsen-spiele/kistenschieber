@@ -4,7 +4,7 @@ import type { Picked } from '../../lib/games/oblique/geometry';
 import { DIRS, nb, parseLevel } from '../../lib/games/sokoban/level';
 import { type Game, busy, key, newGame, showSolution, tick, tip } from '../../lib/games/sokoban/state';
 import { LESSONS } from '../../data/games/lessons';
-import { type KeyInfo, SWIPE_PX, keepsKey, keyAction, padAngles, swipeDir, tapAt } from './ks-input';
+import { type KeyInfo, TAP_PX, isTap, keepsKey, keyAction, padAngles, tapAt } from './ks-input';
 
 const k = (key: string, more: Partial<KeyInfo> = {}): KeyInfo => ({
   key,
@@ -79,29 +79,25 @@ describe('keepsKey', () => {
   });
 });
 
-describe('Wischen', () => {
-  const flat = screenDirs(makeCamera(0, 90));
+describe('Tippen oder Wisch', () => {
   it('bis 28 px ist es ein Tippen', () => {
-    expect(SWIPE_PX).toBe(28);
-    expect(swipeDir(28, 0, flat)).toBeNull();
-    expect(swipeDir(0, -20, flat)).toBeNull();
-    expect(swipeDir(25, 15, flat)).toBe('right'); // 29,2 px
+    expect(TAP_PX).toBe(28);
+    expect(isTap(0, 0)).toBe(true);
+    expect(isTap(28, 0)).toBe(true);
+    expect(isTap(0, -20)).toBe(true);
+    expect(isTap(-15, 15)).toBe(true);
   });
 
-  it('von oben gesehen: die Bildschirmrichtung ist die Gitterrichtung', () => {
-    expect(swipeDir(60, 0, flat)).toBe('right');
-    expect(swipeDir(-60, 5, flat)).toBe('left');
-    expect(swipeDir(3, -60, flat)).toBe('up');
-    expect(swipeDir(0, 60, flat)).toBe('down');
-  });
-
-  it('schräg: die Gitterrichtung, deren Bildschirmrichtung am besten passt', () => {
-    const dirs = screenDirs(makeCamera(45, 20));
-    for (const s of dirs) expect(swipeDir(s.x * 60, s.y * 60, dirs)).toBe(s.name);
-  });
-
-  it('ohne Richtungen kein Schritt', () => {
-    expect(swipeDir(60, 0, [])).toBeNull();
+  it('länger ist ein Wisch: kein Tippen und kein Schritt (Issue #12), in jede Richtung', () => {
+    expect(isTap(25, 15)).toBe(false); // 29,2 px
+    for (const [dx, dy] of [
+      [60, 0],
+      [-60, 5],
+      [3, -60],
+      [0, 60],
+      [-40, -40],
+    ] as const)
+      expect(isTap(dx, dy)).toBe(false);
   });
 });
 

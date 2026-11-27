@@ -92,7 +92,7 @@ export interface ScreenDir {
   readonly y: number;
 }
 
-/** Bildschirmrichtung je Gitterrichtung, für Wischen und die gedrehten Pfeile des Steuerkreuzes */
+/** Bildschirmrichtung je Gitterrichtung, für die gedrehten Pfeile des Steuerkreuzes */
 export function screenDirs(cam: Camera): ScreenDir[] {
   const [x0, y0] = project(cam, 0, 0, 0);
   return (Object.entries(DIRS) as [DirKey, Dir][]).map(([name, d]) => {

@@ -1,7 +1,7 @@
 // Spielen mit dem Finger (Handy hochkant 390×844, Touch an): Antippen läuft hin, Kiste antippen zeigt Pfeile, ein Pfeil
-// schiebt, Wischen macht einen Schritt in die Richtung, die auf dem Bildschirm passt. Das Steuerkreuz erscheint nach
-// dem ersten Antippen und verschwindet mit einer Pfeiltaste; die linke Hand legt es nach links. Alle Ziele mindestens
-// 48 px, kein Querscrollen. Mit Test-Uhr: gewartet wird nur auf Zustände.
+// schiebt. Wischen macht keinen Schritt, der Finger scrollt die Seite, wenn sie höher als der Bildschirm ist (Issue
+// #12). Das Steuerkreuz erscheint nach dem ersten Antippen und verschwindet mit einer Pfeiltaste; die linke Hand legt
+// es nach links. Alle Ziele mindestens 48 px, kein Querscrollen. Mit Test-Uhr: gewartet wird nur auf Zustände.
 import { expect, test, type Page } from '@playwright/test';
 import { makeCamera, screenDirs } from '../src/lib/games/oblique/camera';
 import { SIGN } from '../src/data/games/texts';
@@ -86,26 +86,72 @@ test('eine Kiste ohne Möglichkeit antippen: „Diese Kiste lässt sich gerade n
   await expect(sign(page)).toHaveText(SIGN.noOptions);
 });
 
-test('ein Wisch über 60 px macht einen Schritt in die Richtung, die auf dem Bildschirm passt', async ({ page }) => {
-  // Kamera stark gedreht: Bildschirm- und Gitterrichtung liegen weit auseinander
+test('ein Wisch macht keinen Schritt, in keine Richtung; Antippen läuft danach weiter', async ({ page }) => {
+  // Kamera stark gedreht: auch entlang der Bildschirmrichtungen der Gitterrichtungen kein Schritt
   await openGame(page, { hash: '#lektion-1', store: { drehung: 45, neigung: 30 } });
   await touchOn(page);
-  const dirs = screenDirs(makeCamera(45, 30));
-  const box = (await page.locator(FIELD).boundingBox())!;
-  const [x, y] = [box.x + box.width / 2, box.y + box.height / 2];
-  const along = async (name: string) => {
-    const d = dirs.find((s) => s.name === name)!;
+  const field = (await box(page, FIELD))!;
+  const [x, y] = [field.x + field.width / 2, field.y + field.height / 2];
+  // Lektion 1: rechts der Figur ist frei, früher machte ein Wisch dorthin einen Schritt
+  for (const d of screenDirs(makeCamera(45, 30))) {
     await swipe(page, x, y, d.x * 60, d.y * 60);
-    await render(page, 4);
-  };
-  // Lektion 1: rechts der Figur zwei Felder frei, dann Wand; links, oben (Wand) und unten (Wand) ergäben anderes
-  await along('right');
+    await render(page, 8);
+  }
+  await expect(count(page)).toHaveText('0 Züge');
+  await tap(page, { r: 5, c: 1 });
+  await expect(count(page)).toHaveText('4 Züge');
+});
+
+test('das Feld lässt die Seite scrollen: kein touch-action none, nirgends preventDefault bei Touch', async ({
+  page,
+}) => {
+  await openGame(page, { hash: '#lektion-1' });
+  await touchOn(page);
+  const styles = await page.evaluate(() =>
+    ['#spiel .game', '#spiel .field canvas'].map((sel) => getComputedStyle(document.querySelector(sel)!).touchAction),
+  );
+  expect(styles).toEqual(['manipulation', 'manipulation']);
+  // Ziehen zum Neuladen bleibt aus: Für den Viewport zählt nur der Wert am Wurzelelement, nicht der von body
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).overscrollBehaviorY)).toBe('none');
+  // Kein Pointer- oder Touch-Ereignis auf dem Feld wird abgefangen (sonst scrollte der Finger nicht)
+  await page.evaluate(() => {
+    const seen: string[] = [];
+    (window as unknown as { __prevented: string[] }).__prevented = seen;
+    for (const type of ['pointerdown', 'pointermove', 'pointerup', 'touchstart', 'touchmove', 'touchend'])
+      addEventListener(type, (e) => void (e.defaultPrevented && seen.push(type)), { passive: true });
+  });
+  const field = (await box(page, FIELD))!;
+  await swipe(page, field.x + field.width / 2, field.y + field.height / 2, 0, -80);
+  await render(page, 8);
+  expect(await page.evaluate(() => (window as unknown as { __prevented: string[] }).__prevented)).toEqual([]);
+  await expect(count(page)).toHaveText('0 Züge');
+});
+
+test('hochkant niedriger als das Spielfeld (390×400): Wischen auf dem Feld scrollt die Seite, kein Schritt', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 400 });
+  await openGame(page, { hash: '#lektion-1' });
+  await touchOn(page);
+  const room = await page.evaluate(() => document.documentElement.scrollHeight - innerHeight);
+  expect(room).toBeGreaterThan(40);
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  // Die Insel bleibt ganz im Feld (nicht abgeschnitten) und liegt nicht unter dem Steuerkreuz
+  const [area, board] = [(await box(page, '#spiel .field'))!, (await box(page, FIELD))!];
+  expect(board.y).toBeGreaterThanOrEqual(area.y);
+  expect(board.y + board.height).toBeLessThanOrEqual(area.y + area.height + 0.5);
+  expect(apart(board, await box(page, '#spiel .pad'))).toBe(true);
+  const field = board;
+  await swipe(page, field.x + field.width / 2, field.y + field.height * 0.7, 0, -150);
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
+  await render(page, 8);
+  await expect(count(page)).toHaveText('0 Züge');
+  // Unten sind „Zug zurück“ und das Steuerkreuz erreichbar
+  await page.evaluate(() => scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
+  await expect(page.getByRole('button', { name: 'Zug zurück' })).toBeInViewport({ ratio: 1 });
+  await pad(page).getByRole('button', { name: 'Links' }).tap();
+  await render(page, 4);
   await expect(count(page)).toHaveText('1 Zug');
-  await along('right');
-  await along('right');
-  await expect(count(page)).toHaveText('2 Züge');
-  await along('up');
-  await expect(count(page)).toHaveText('3 Züge');
 });
 
 test('ein kurzer Wisch (unter 28 px) ist ein Tippen, kein Schritt', async ({ page }) => {
@@ -221,6 +267,45 @@ test.describe('Ziele und Platz', () => {
     expect(after!.height).toBeGreaterThan(40);
     // Nach dem Sieg geht kein Schritt mehr: Das Steuerkreuz ist weg, behält aber seine Breite
     await expect(pad(page)).toBeHidden();
+  });
+
+  test('hochkant niedrig 375×560: Felder mindestens 24 px; Warnung, Angebot und Sieg im Himmel über der Insel', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 560 });
+    // Lektion 15 hat das größte Feld der Einführung: auch dort mindestens 24 px je Feld, ohne Scrollen
+    await openGame(page, { hash: '#lektion-15', store: upTo(15) });
+    await touchOn(page);
+    expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeLessThanOrEqual(0);
+    const [a, b] = [await spot(page, { r: 2, c: 2 }), await spot(page, { r: 2, c: 3 })];
+    expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThanOrEqual(24);
+    await page.evaluate(() => (location.hash = '#lektion-4'));
+    await expect(count(page)).toHaveText('0 Züge');
+    await render(page);
+    const field = (await box(page, '#spiel .field'))!;
+    const board = (await box(page, FIELD))!;
+    expect(board.y + board.height).toBeLessThanOrEqual(field.y + field.height + 0.5);
+    const shown = async () => {
+      await page.locator('[data-ks="title"]').tap();
+      await render(page);
+      for (const part of [await box(page, '#spiel [data-ks="sign"]'), await box(page, '#spiel .after')]) {
+        expect(apart(part, board)).toBe(true);
+        if (part && part.height) expect(part.y).toBeGreaterThanOrEqual(field.y - 0.5);
+      }
+      expect(await box(page, FIELD)).toEqual(board);
+    };
+    await playLurd(page, 'ruLLdlU');
+    await expect(sign(page)).toHaveClass('sign warn');
+    await shown();
+    await page.keyboard.press('r');
+    await render(page, 4);
+    await expect(page.getByRole('button', { name: 'Zu knifflig? Überspringen' })).toBeVisible();
+    await shown();
+    await page.keyboard.press('r');
+    await render(page, 4);
+    await playLurd(page, LESSONS[3]!.sol);
+    await expect(sign(page)).toHaveText(/^Geschafft!/);
+    await shown();
   });
 
   for (const [width, height] of [

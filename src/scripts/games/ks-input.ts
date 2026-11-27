@@ -2,8 +2,8 @@
 // Backspace nehmen einen Zug zurück, R startet neu, H gibt einen Tipp, M öffnet das Menü, Esc hebt die Auswahl auf
 // (sonst Menü), Enter geht nach dem Sieg weiter. Ignoriert werden Tasten bei offenem Dialog, in Formularfeldern und mit
 // Alt, Strg oder Meta (Tastenkürzel des Browsers). Dazu Zeiger und Steuerkreuz: Ein kurzer Weg ist ein Tippen, ein
-// langer (über 28 px) ein Wisch in die Gitterrichtung, deren Bildschirmrichtung am besten passt; die Pfeile des
-// Steuerkreuzes zeigen in dieselbe Bildschirmrichtung.
+// langer (über 28 px) tut nichts – Wischen ist kein Schritt (Issue #12), der Finger darf die Seite scrollen. Die Pfeile
+// des Steuerkreuzes zeigen in die Bildschirmrichtung der Gitterrichtung.
 import type { ScreenDir } from '../../lib/games/oblique/camera';
 import type { Picked } from '../../lib/games/oblique/geometry';
 import { type DirKey, nb } from '../../lib/games/sokoban/level';
@@ -69,17 +69,11 @@ export function keyAction(k: KeyInfo, won: boolean): KeyAction | null {
 /** Diese Tasten tun sonst etwas im Browser (Seite scrollen, zurück): das Spiel behält sie für sich */
 export const keepsKey = (a: KeyAction): boolean => a.kind === 'step' || a.kind === 'undo' || a.kind === 'escape';
 
-/** Ab so viel Weg (CSS-px) zwischen Drücken und Loslassen ist es ein Wisch, kein Tippen */
-export const SWIPE_PX = 28;
+/** Bis zu so viel Weg (CSS-px) zwischen Drücken und Loslassen ist es ein Tippen; mehr ist ein Wisch und tut nichts */
+export const TAP_PX = 28;
 
-/** Wischrichtung: die Gitterrichtung, deren Bildschirmrichtung am besten zum Weg passt; null = Tippen */
-export function swipeDir(dx: number, dy: number, dirs: readonly ScreenDir[]): DirKey | null {
-  const l = Math.hypot(dx, dy);
-  if (l <= SWIPE_PX) return null;
-  let best: ScreenDir | null = null;
-  for (const s of dirs) if (!best || s.x * dx + s.y * dy > best.x * dx + best.y * dy) best = s;
-  return best?.name ?? null;
-}
+/** Ein Tippen (kurzer Weg) oder ein Wisch (langer Weg, kein Schritt: Wischen scrollt höchstens die Seite) */
+export const isTap = (dx: number, dy: number): boolean => Math.hypot(dx, dy) <= TAP_PX;
 
 /** Drehung (Grad) der Pfeile im Steuerkreuz: der Pfeil zeigt nach oben, gedreht auf die Bildschirmrichtung */
 export function padAngles(dirs: readonly ScreenDir[]): Record<DirKey, number> {

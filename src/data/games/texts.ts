@@ -49,7 +49,7 @@ export const lessonName = (lesson: Pick<Lesson, 'n' | 'title'>): string => `Lekt
 
 /** Beschriftung des Spielfelds */
 export const fieldLabel = (lesson: Pick<Lesson, 'n' | 'title'>): string =>
-  `${lessonName(lesson)}. Antippen, Wischen oder Pfeiltasten bewegen die Figur.`;
+  `${lessonName(lesson)}. Antippen oder Pfeiltasten bewegen die Figur.`;
 
 /** Großer Knopf nach dem Sieg: weiter zur nächsten Lektion, nach der letzten zur Levelwahl (Level kommen später) */
 export const nextText = (n: number): string => (isFinale(n) ? 'Zur Levelwahl' : `Weiter zu Lektion ${n + 1}`);

@@ -361,5 +361,5 @@ export function showSolution(g: Game, now: number, cap = SOLVE_CAP): Game {
     : s;
 }
 
-/** Vorspielen abbrechen (Taste, Tippen, Wischen, Menü): Puffer leeren, Schild leer */
+/** Vorspielen abbrechen (Taste, Tippen, Steuerkreuz, Menü): Puffer leeren, Schild leer */
 export const stopAuto = stopped;

@@ -484,11 +484,13 @@ html:not(.touch) .pad {
 
 /* ---------- Spielfeld ----------
    Ein Container füllt den ganzen Bildschirm (100dvh, Safe Areas); sein Seitenverhältnis entscheidet, ob die Knöpfe
-   unter (hochkant) oder neben dem Feld (quer, ab 6/5) liegen. Niedrig (≤ 430 px) wird alles enger, schmal (≤ 380 px)
-   werden die Knöpfe schmaler. Schild und Zähler bleiben auch dunkel hell. Kein Ziehen der Seite, kein Markieren, kein
-   Doppeltipp-Zoom. Wie im Entwurf (CSS „Spiel“) */
-body.playing {
-  overflow: hidden;
+   unter (hochkant) oder neben dem Feld (quer, ab 6/5) liegen. Niedrig (≤ 600 px) wird alles enger, schmal (≤ 380 px)
+   werden die Knöpfe schmaler. Schild und Zähler bleiben auch dunkel hell. Kein Markieren, kein Doppeltipp-Zoom, kein
+   Ziehen zum Neuladen (overscroll-behavior am Wurzelelement: nur dessen Wert gilt für den Viewport, der von body wird
+   nicht weitergereicht). Die Seite darf aber scrollen (Issue #12, anders als im Entwurf): Wischen
+   ist kein Schritt, und ist der Bildschirm niedriger als die Untergrenze des Spielfelds (min-height), scrollt der Finger
+   auch auf dem Feld die Seite. Im Normalfall passt alles ohne Scrollen (CSS „Spiel“ im Entwurf) */
+html:has(body.playing) {
   overscroll-behavior: none;
 }
 .ks.playing {
@@ -499,10 +501,18 @@ body.playing {
   flex-direction: column;
   height: 100vh;
   height: 100dvh;
+  min-height: 20rem;
   max-width: none;
   padding: max(4px, env(safe-area-inset-top, 0px)) max(4px, env(safe-area-inset-right, 0px))
     max(4px, env(safe-area-inset-bottom, 0px)) max(4px, env(safe-area-inset-left, 0px));
   gap: 0;
+}
+/* Hochkant liegen Kopf, Platz für Meldungen (--msg-room), Insel und Steuerkreuz untereinander: Unter 35rem bliebe der
+   Insel zu wenig Höhe (Felder unter 24 px, zu klein für einen Kinderfinger), also scrollt dann lieber die Seite */
+@media (orientation: portrait) {
+  .screen.play {
+    min-height: 35rem;
+  }
 }
 .game {
   container-type: size;
@@ -514,6 +524,7 @@ body.playing {
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 /* Am Schreibtisch mit Rahmen und etwas Abstand; auf Handy und Tablet randlos */
 @media (min-width: 901px) and (pointer: fine) {
@@ -587,7 +598,7 @@ body.playing {
 .field canvas {
   display: block;
   max-width: 100%;
-  touch-action: none;
+  touch-action: manipulation;
   cursor: pointer;
   image-rendering: pixelated;
 }
@@ -766,8 +777,9 @@ body.playing {
     transition: none;
   }
 }
-/* Wenig Höhe oder Breite: kleinere Knöpfe und Steuerkreuz (nach den Grundregeln, damit sie gelten) */
-@container (max-height: 430px) {
+/* Wenig Höhe oder Breite: kleinere Knöpfe und Steuerkreuz (nach den Grundregeln, damit sie gelten). Niedrig heißt
+   bis 600 px: Hochkant auf kleinen Handys (375×553) bleibt so mehr Höhe für die Insel */
+@container (max-height: 600px) {
   .gin {
     gap: 6px;
     padding: 6px 10px 8px;
@@ -784,6 +796,12 @@ body.playing {
     grid-template-columns: repeat(3, 48px);
     grid-template-rows: repeat(3, 48px);
     gap: 4px;
+  }
+}
+/* Hochkant und niedrig: Schild (höchstens zwei Zeilen) und „Weiter“/„Nochmal“ passen auch in 7.5rem Himmel */
+@container (max-height: 600px) and (max-aspect-ratio: 6/5) {
+  .gin {
+    --msg-room: 7.5rem;
   }
 }
 @container (max-width: 380px) {

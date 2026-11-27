@@ -17,7 +17,7 @@ Umgesetzt ist es in reinen, getesteten Teilen und einer Web Component:
 | Feine Texturen gegen die Schnittstelle `Pen`; dieselben Befehle als SVG für das App-Symbol | [`textures.ts`](../../src/lib/games/oblique/textures.ts), [`pen.ts`](../../src/lib/games/oblique/pen.ts), [`svg-pen.ts`](../../src/lib/games/oblique/svg-pen.ts) | `textures.test.ts`, `svg-pen.test.ts` |
 | Die 15 Lektionen, Texte, Stil „An der Kaje“, Ausblick auf die Level | [`src/data/games/`](../../src/data/games/) (`lessons.ts`, `texts.ts`, `kaje.ts`, `teaser.ts`) | `lessons.test.ts`, `texts.test.ts`, `kaje.test.ts`, `teaser.test.ts` |
 | Bildschirme per Hash | [`src/scripts/games/ks-router.ts`](../../src/scripts/games/ks-router.ts) | `ks-router.test.ts` |
-| Eingabe: Tasten, Wischen, Antippen, Steuerkreuz | [`src/scripts/games/ks-input.ts`](../../src/scripts/games/ks-input.ts) | `ks-input.test.ts`, `e2e/touch.spec.ts` |
+| Eingabe: Tasten, Antippen (Wischen tut nichts), Steuerkreuz | [`src/scripts/games/ks-input.ts`](../../src/scripts/games/ks-input.ts) | `ks-input.test.ts`, `e2e/touch.spec.ts` |
 | Speichern | [`src/scripts/games/ks-save.ts`](../../src/scripts/games/ks-save.ts) | `ks-save.test.ts` |
 | Bildschirm bleibt an | [`src/scripts/games/wake-lock.ts`](../../src/scripts/games/wake-lock.ts) | `wake-lock.test.ts` |
 | App-Updates an sicheren Stellen | [`src/scripts/games/pwa-update.ts`](../../src/scripts/games/pwa-update.ts), [`pwa-moment.ts`](../../src/scripts/games/pwa-moment.ts) | `pwa-update.test.ts`, `e2e/pwa-update.spec.ts` |
@@ -45,7 +45,7 @@ Der Spielzustand (`state.ts`) ist ein reiner Reducer: Jede Funktion bekommt den 
 
 | Ereignis | Funktion | Auslöser |
 | --- | --- | --- |
-| Schritt | `key(g, d, now)` | Pfeiltaste oder WASD, Wisch, Steuerkreuz |
+| Schritt | `key(g, d, now)` | Pfeiltaste oder WASD, Steuerkreuz |
 | Laufweg oder Laufweg plus Schub | `act(g, steps, now)`, `pushVia(g, id, d, now)` | Antippen eines Bodenfelds bzw. eines Pfeils |
 | Takt | `tick(g, now)` | jedes Bild, solange etwas läuft |
 | Zug zurück | `undo(g)` | Knopf „Zug zurück“, Z, Backspace |
@@ -77,7 +77,7 @@ Der Spielzustand (`state.ts`) ist ein reiner Reducer: Jede Funktion bekommt den 
 | **Freischalten:** der Reihe nach. Geschafft, übersprungen und mit Lösung gesehen machen die nächste frei, nie die übernächste | `progress.test.ts`, `e2e/site.spec.ts` |
 | **Gesperrte Lektion:** `#lektion-N` einer gesperrten Lektion zeigt „Diese Lektion ist noch zu“ mit dem Knopf zur ersten offenen Lektion; sie wird nicht als letzte gemerkt | `texts.test.ts`, `progress.test.ts`, `e2e/site.spec.ts`, `e2e/game.spec.ts` |
 | **Antippen:** Ein erreichbares Bodenfeld: Die Figur läuft hin, als ein Zug zum Zurücknehmen. Eine Kiste: goldener Rand und goldene Pfeile in jede mögliche Richtung (grau, wenn sie in eine Sackgasse führt); noch einmal hebt die Wahl auf; ohne Möglichkeit „Diese Kiste lässt sich gerade nirgendwohin schieben.“ Ein gezeigter Pfeil: hinlaufen und schieben; mit Tipp ist nur sein Pfeil antippbar, die anderen Felder um die Kiste sind gewöhnlicher Boden (`arrowDirs`, dieselbe Liste wie beim Zeichnen) | `ks-input.test.ts`, `state.test.ts`, `scene.test.ts`, `e2e/touch.spec.ts` |
-| **Wischen:** Über 28 px ist ein Schritt in die Gitterrichtung, deren Bildschirmrichtung am besten passt; kürzer ist ein Tippen | `ks-input.test.ts`, `e2e/touch.spec.ts` |
+| **Wischen:** Bis 28 px Weg ist es ein Tippen; ein längerer Wisch macht keinen Schritt und tippt nichts an. Kein Handler fängt Pointer- oder Touch-Ereignisse ab, Feld und Spielfläche haben `touch-action: manipulation` (Scrollen ja, Doppeltipp-Zoom nein): Der Finger scrollt die Seite, wenn sie höher als der Bildschirm ist | `ks-input.test.ts`, „ein Wisch macht keinen Schritt“ und „Wischen auf dem Feld scrollt die Seite“ in `e2e/touch.spec.ts` |
 | **Steuerkreuz:** nur mit Touch (Gerät mit grobem Zeiger oder nach dem ersten Antippen; eine Pfeiltaste blendet es aus, Klasse `touch` an `<html>`, `ks-touch.ts`), Pfeile in die Bildschirmrichtung der Kamera gedreht, Seite nach der Einstellung „Hand“ | `ks-input.test.ts`, `e2e/touch.spec.ts` |
 | **Tasten:** Pfeile und WASD laufen, Z und Backspace Zug zurück, R neu, H Tipp, M Menü, Esc hebt erst eine Auswahl auf, dann öffnet es das Menü. Mit Alt, Strg oder Meta, in Formularfeldern und bei offenem Menü zählen sie nicht | `ks-input.test.ts`, `e2e/game.spec.ts` |
 | **Menü im Spiel:** Weiterspielen, Neu starten, Tipp, Lösung zeigen, Lektion überspringen, Level wählen, Einstellungen, Startbildschirm und die Notiz, als modaler Dialog mit Fokusfalle. Ein Bildschirmwechsel schließt es; es geht auch, wenn der nachgeladene Teil fehlt | `texts.test.ts`, `e2e/game.spec.ts` |
@@ -98,7 +98,7 @@ Der Spielzustand (`state.ts`) ist ein reiner Reducer: Jede Funktion bekommt den 
 - Kein Three.js und kein WebGL auf der Spielseite; der Kern bleibt im Budget, Menü-Konfetti und Anmeldung des Service Workers kommen nachgeladen. *Bundle-Gate, `scripts/guards.test.ts`*
 - Ohne JavaScript bleibt die Seite als Dokument lesbar (Titel, die 15 Lektionen mit Idee, ein `<noscript>`-Hinweis, dass das Spiel JavaScript braucht); Spielfeld und Einstellungen sind dann ausgeblendet. *„ohne JavaScript“ in `e2e/site.spec.ts`*
 - Barrierefreiheit nach WCAG 2.2 AA auf jedem Bildschirm und Zustand, hell und dunkel. *`e2e/a11y.spec.ts`*
-- Alle Knöpfe sind auf Handy und Tablet mindestens 48 px groß, nichts scrollt quer, das Spielfeld passt hoch und quer ohne Scrollen. *`e2e/touch.spec.ts`, `e2e/game.spec.ts`*
+- Alle Knöpfe sind auf Handy und Tablet mindestens 48 px groß, nichts scrollt quer, das Spielfeld passt hoch und quer ohne Scrollen. Nur unter seiner Mindesthöhe (hochkant 35rem, quer 20rem) wird die Seite höher als der Bildschirm und lässt sich scrollen, auch mit dem Finger auf dem Feld; so bleibt die Insel ganz zu sehen und ein Feld der Einführung hochkant mindestens 24 px groß (bis 600 px Höhe kleineres Steuerkreuz und 7.5rem statt 8.5rem Himmel für Meldungen). Ziehen zum Neuladen ist beim Spielen aus (`overscroll-behavior: none` am Wurzelelement, nur dort gilt es für den Viewport). *`e2e/touch.spec.ts`, `e2e/game.spec.ts`*
 
 ## App (installieren und ohne Netz spielen)
 
@@ -193,6 +193,7 @@ Alles liegt nur im `localStorage` des Geräts, jeder Schlüssel mit dem Präfix 
 - Die Lektion, die dran ist, bekommt in der Levelwahl einen goldenen Rahmen statt der Goldfläche der Kachel aus der Menüführung; das Vorschaubild bleibt sichtbar.
 - Die Statuszeile des Startbildschirms steht in `--text` statt `--muted` (sonst nur 4,46:1 auf dem Himmel), die Unterzeile gesperrter Karten in `--text` statt `--soft` (unter Deckkraft .62 sonst unter 4,5:1, axe).
 - Kein Knopf „Tipp“ unter dem Feld (nur Menü und H), damit unten Platz bleibt; der Tipp zeigt nur seinen einen türkisen Pfeil statt aller Richtungen der Kiste (im Entwurf las sich das auf dem Handy wie „hoch oder runter“), und das Schild sagt kürzer „Tipp: Diese Kiste in Pfeilrichtung schieben.“ (Issue #14).
+- Kein Wischen (Issue #12): Im Entwurf machte ein Wisch einen Schritt, und das Feld fing jeden Finger ab (`touch-action: none`, Seite `overflow: hidden`), sodass auf Handy und Tablet nichts scrollte. Hier laufen Antippen und Steuerkreuz, ein Wisch tut nichts, und die Seite darf scrollen; die Beschriftung des Felds sagt „Antippen oder Pfeiltasten bewegen die Figur.“
 - Kein Sprunglink auf der Spielseite: `#inhalt` wäre ein unbekannter Hash und führte zum Start, vor dem Inhalt steht nichts.
 
 ## Haken für die Browser-Tests
