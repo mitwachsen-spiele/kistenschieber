@@ -202,8 +202,9 @@ a.btn:hover {
   width: 100%;
   max-width: 920px;
 }
-/* Zwei Teile, klar getrennt: links die spielbare Einführung als Karte mit Pixel-Rahmen und dem einzigen goldenen
-   Knopf, rechts die Level als Ankündigung: vertieft, gestrichelt, ohne Gold, ohne Hover, nichts zum Anklicken */
+/* Zwei Teile, klar getrennt: links die spielbare Einführung als Karte mit Pixel-Rahmen und goldenem Knopf, rechts die
+   Level. Vor dem ersten Tag des Adventskalenders sind sie Ankündigung (.soon): vertieft, gestrichelt, ohne Gold, nichts
+   zum Anklicken; danach eine Karte wie die Einführung (.now) mit eigenem Knopf. Gold trägt nur einer (ks-screens.ts) */
 .parts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
@@ -245,18 +246,26 @@ a.btn:hover {
   font-size: 0.9rem;
   color: var(--soft);
 }
+/* Sind Einführung und Level spielbar (.both, ab dem 1. Dezember), fehlt auf Handys der Platz für beide Unterzeilen:
+   Lernen in 15 Lektionen und das Kapitel der Level stehen auch in der Levelwahl */
+@media (max-height: 900px) {
+  .parts.both .sub {
+    display: none;
+  }
+}
 .part.now {
   background: var(--card);
   color: var(--text);
   box-shadow: var(--ks-px);
 }
-.part.now [data-ks='status'] {
+.part.now [data-ks='status'],
+.part.now [data-ks='level-status'] {
   font-weight: 700;
 }
 .part.now.done [data-ks='status'] {
   color: var(--ok);
 }
-.part.now .btn.primary {
+.part.now .btn {
   justify-content: center;
   margin-top: 6px;
 }

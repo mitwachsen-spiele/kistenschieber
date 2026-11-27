@@ -2,7 +2,7 @@
 
 Ein ruhiges Denkspiel von [mitwachsen-spiele.de](https://www.mitwachsen-spiele.de/): Frauke schiebt Kisten an einem Hafenkai auf die gelben Felder. Ohne Uhr, ohne Leben, ohne Werbung, kostenlos im Browser und als App auf Handy und Tablet, auch ohne Internet. Unter https://kistenschieber.mitwachsen-spiele.de/.
 
-Heute spielbar ist die Einführung mit 15 Lektionen, die Schritt für Schritt zeigen, wie Kisten sich schieben lassen und wo sie festsitzen. Dazu kommen Startbildschirm, Levelwahl und Einstellungen. Die 24 Level in zwei Kapiteln folgen mit einem eigenen Issue.
+Spielbar ist die Einführung mit 15 Lektionen, die Schritt für Schritt zeigen, wie Kisten sich schieben lassen und wo sie festsitzen, und danach die ersten sechs Level aus Kapitel 1 „Am Kai“ als Adventskalender: Level N geht am N. Dezember 2026 um 0 Uhr deutscher Zeit auf. Dazu kommen Startbildschirm, Levelwahl und Einstellungen. Die Level 7 bis 24 (mit Schranke, Schalter, Bodenluke und Tor) folgen.
 
 Gebaut mit [Astro](https://astro.build), ausgeliefert als statische Seite über GitHub Pages. Vorlage ist das Artefakt „Kistenschieber“ (Entwurf mit Menüführung, Grafik, Stil und Figur); Vorbild für Gates, App und Service Worker ist [mitwachsen-spiele/weltenbummler](https://github.com/mitwachsen-spiele/weltenbummler).
 
@@ -12,7 +12,7 @@ Gebaut mit [Astro](https://astro.build), ausgeliefert als statische Seite über 
 - **Bedienen:** Feld antippen, und die Figur läuft hin; eine Kiste antippen zeigt Pfeile, ein Pfeil schiebt sie. Auf Handy und Tablet gibt es dazu ein Steuerkreuz (Seite wählbar). Am Computer: Pfeiltasten oder WASD, Z zurück, R neu, H Tipp, M oder Esc Menü.
 - **Hilfen:** „Zug zurück“ geht immer, auch nach einem Neustart. Eine Kiste, die kein Ziel mehr erreichen kann (Ecke oder Wand ohne Ziel), bekommt einen roten Rand. „Tipp“ (im Menü oder H) zeigt die nächste Kiste und mit einem Pfeil ihre Richtung, „Lösung zeigen“ spielt die Lektion vor. Nach drei Rückschlägen bietet das Spiel das Überspringen an.
 - **Ton:** leise Töne beim Laufen und Schieben, ein Klick, wenn eine Kiste auf ihrem Ziel einrastet, eine kleine Melodie bei „Geschafft!“. In den Einstellungen abschaltbar („Ton: Aus“). Ohne Audiodateien, erst nach dem ersten Tippen oder Tastendruck.
-- **Fortschritt:** Lektionen werden der Reihe nach frei. Geschafft, übersprungen oder mit Lösung gesehen macht die nächste frei; die Levelwahl zeigt, was noch offen ist.
+- **Fortschritt:** Lektionen und Level werden der Reihe nach frei. Geschafft, übersprungen oder mit Lösung gesehen macht die nächste frei; ein Level dazu erst an seinem Tag. Die Levelwahl zeigt, was noch offen ist und wann ein Level aufgeht.
 
 Die Regeln im Einzelnen und die Tests dazu stehen in der Spec [docs/specs/kistenschieber.md](docs/specs/kistenschieber.md).
 
@@ -48,7 +48,7 @@ src/
   lib/games/oblique/  schräge Kamera, Formen, Modelle, feine Texturen, SVG-Zeichner (rein, getestet)
   lib/pwa/            Manifest, Liste für den Service Worker, Service Worker (rein, getestet)
   lib/voxel/          Würfel-Grafik und Symbol beim Build
-  data/games/         die 15 Lektionen, Texte, Stil „An der Kaje“, Ausblick auf die Level
+  data/games/         die 15 Lektionen, die Level mit ihrem Tag, Texte, Stil „An der Kaje“, Kapitel und Ausblick
   data/               Seitendaten, App, Symbol
   scripts/games/      das Spiel im Browser: Web Component, Bildschirme, Spielfeld, Eingabe, Speichern,
                       Zeichnen, Ton, Wake Lock, Anmeldung des Service Workers
@@ -64,7 +64,7 @@ docs/design-system.md Farben, Typografie, Grafik, Figur, Symbol
 
 Auf dem Android-Handy oder -Tablet im Browsermenü „App installieren“ wählen. Auf iPhone und iPad in Safari über „Teilen“ den Eintrag „Zum Home-Bildschirm“. Danach startet Kistenschieber ohne Browserleisten wie eine App und läuft auch ohne Internet, nachdem es einmal mit Internet geöffnet war. Es dreht sich mit dem Gerät, hoch und quer, und der Bildschirm bleibt beim Spielen an.
 
-Neue Versionen lädt die App still im Hintergrund und übernimmt sie nur in ruhigen Momenten: auf dem Startbildschirm, in der Levelwahl, in den Einstellungen oder nach „Geschafft!“, nie mitten in einer Lektion.
+Neue Versionen lädt die App still im Hintergrund und übernimmt sie nur in ruhigen Momenten: auf dem Startbildschirm, in der Levelwahl, in den Einstellungen oder nach „Geschafft!“, nie mitten in einer Lektion oder einem Level.
 
 ## Pipeline und Deploy
 

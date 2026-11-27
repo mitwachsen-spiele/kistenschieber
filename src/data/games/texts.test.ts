@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LESSONS } from './lessons';
+import { LEVELS } from './levels';
 import {
   FINALE,
   LOCKED,
@@ -20,8 +21,18 @@ import {
   countText,
   fieldLabel,
   isFinale,
+  LEVEL_PART,
+  LOCKED_LEVEL,
+  SHOWN_WIN_LEVEL,
+  dayText,
   lessonName,
+  levelGo,
+  levelStatus,
+  lockedDay,
+  menuNote,
+  menuSkip,
   nextText,
+  puzzleName,
   sceneLabel,
   signText,
   startStatus,
@@ -29,6 +40,7 @@ import {
 } from './texts';
 
 const lesson = (n: number) => LESSONS[n - 1]!;
+const level = (n: number) => LEVELS[n - 1]!;
 
 describe('Sieg-Text', () => {
   it('bis zum Optimum „kürzer geht es nicht“', () => {
@@ -50,6 +62,11 @@ describe('Sieg-Text', () => {
     );
     expect(FINALE).toBe(' Damit ist die Einführung geschafft.');
     expect(signText('win', lesson(14), 999)).not.toContain('Einführung');
+  });
+
+  it('Level hängen nichts an, auch Level 6 nicht', () => {
+    expect(signText('win', level(6), 31, 'l')).toBe('Geschafft! 31 Züge, kürzer geht es nicht.');
+    expect(signText('win', { n: 15, moves: 9 }, 9, 'l')).not.toContain('Einführung');
   });
 });
 
@@ -79,6 +96,9 @@ describe('Schild', () => {
     expect(Object.values(SIGN)).not.toContain('Die Kiste steht.');
     expect(SIGN.tip).toBe('Tipp: Diese Kiste in Pfeilrichtung schieben.');
     expect(SIGN.shownWin).toBe('So geht es. Jetzt du? „Nochmal“ startet die Lektion neu.');
+    expect(signText('shownWin', level(1), 0, 'l')).toBe(SHOWN_WIN_LEVEL);
+    expect(SHOWN_WIN_LEVEL).toBe('So geht es. Jetzt du? „Nochmal“ startet das Level neu.');
+    expect(signText('tip', level(1), 0, 'l')).toBe(SIGN.tip);
   });
 });
 
@@ -87,18 +107,21 @@ describe('Zähler, Titel, Knöpfe', () => {
     expect([countText(0), countText(1), countText(2)]).toEqual(['0 Züge', '1 Zug', '2 Züge']);
   });
 
-  it('Name „Lektion N: Titel“', () => {
+  it('Name „Lektion N: Titel“ und „Level N: Titel“', () => {
     expect(lessonName(lesson(1))).toBe('Lektion 1: Erster Schubs');
+    expect(puzzleName('l', level(2))).toBe('Level 2: Poller');
   });
 
   it('Beschriftung des Spielfelds wörtlich', () => {
     expect(fieldLabel(lesson(3))).toBe('Lektion 3: Zwei Kisten. Antippen oder Pfeiltasten bewegen die Figur.');
+    expect(fieldLabel(level(1), 'l')).toBe('Level 1: Anleger. Antippen oder Pfeiltasten bewegen die Figur.');
   });
 
-  it('nach dem Sieg weiter zur nächsten Lektion, nach Lektion 15 „Zu den Lektionen“', () => {
-    expect(nextText(1)).toBe('Weiter zu Lektion 2');
-    expect(nextText(14)).toBe('Weiter zu Lektion 15');
-    expect(nextText(15)).toBe('Zu den Lektionen');
+  it('nach dem Sieg „Weiter zu …“ (auch nach Lektion 15 zu Level 1), sonst „Zur Levelwahl“ wie im Entwurf', () => {
+    expect(nextText('#lektion-2')).toBe('Weiter zu Lektion 2');
+    expect(nextText('#lektion-15')).toBe('Weiter zu Lektion 15');
+    expect(nextText('#level-1')).toBe('Weiter zu Level 1');
+    expect(nextText('#level')).toBe('Zur Levelwahl');
     expect([isFinale(14), isFinale(15)]).toEqual([false, true]);
     expect(GAME_BUTTONS).toMatchObject({ again: 'Nochmal', offer: 'Zu knifflig? Überspringen' });
     // Tipp gibt es nur noch im Menü und mit H: unten bleibt nur „Zug zurück“ (Platz auf dem Handy)
@@ -145,6 +168,14 @@ describe('Levelwahl', () => {
 
   it('Vorschau-Label', () => {
     expect(thumbLabel(7)).toBe('Vorschau von Lektion 7');
+    expect(thumbLabel(3, 'l')).toBe('Vorschau von Level 3');
+  });
+
+  it('ein Level vor seinem Tag sagt, wann es aufgeht', () => {
+    expect(badgeText('locked', null, '2026-12-03')).toBe('Geht am 3. Dezember auf');
+    expect(badgeText('locked', null, null)).toBe('Noch zu');
+    expect(dayText('2026-12-01')).toBe('1. Dezember');
+    expect(dayText('2027-01-06')).toBe('6. Januar');
   });
 
   it('Zeile je Zustand wörtlich, offen ohne', () => {
@@ -163,6 +194,40 @@ describe('Levelwahl', () => {
     expect(lockedWhy(lesson(2))).toBe('Schaff zuerst Lektion 2: Um die Ecke oder überspring es; dann geht es weiter.');
     expect(lockedGo(2)).toBe('Zu Lektion 2');
   });
+
+  it('gesperrtes Level: Überschrift wie im Entwurf, Grund mit Tag oder vorigem Level, Knopf', () => {
+    expect(LOCKED_LEVEL.title).toBe('Dieses Level ist noch zu');
+    expect(LOCKED_LEVEL.note).toBe('Jeden Tag im Advent geht ein neues Level auf. Gespielt wird der Reihe nach.');
+    expect(lockedDay(level(3), level(3).opens)).toBe('Level 3: Laufsteg geht am 3. Dezember auf.');
+    expect(lockedWhy(level(2), 'l')).toBe('Schaff zuerst Level 2: Poller oder überspring es; dann geht es weiter.');
+    expect(lockedGo(2, 'l')).toBe('Zu Level 2');
+  });
+});
+
+describe('Startbildschirm: Level als Adventskalender', () => {
+  const span = { first: '2026-12-01', last: '2026-12-06' };
+
+  it('vor dem ersten Tag: Pille „ab 1. Dezember“ und wann sie aufgehen', () => {
+    expect(LEVEL_PART).toEqual({ title: 'Level', soon: 'ab 1. Dezember', now: 'Adventskalender' });
+    expect(levelStatus(0, 0, span, { n: 1, opens: '2026-12-01' })).toBe(
+      'Vom 1. Dezember bis 6. Dezember geht jeden Tag ein neues Level auf.',
+    );
+  });
+
+  it('danach: geschafft von aufgegangen und wann das nächste kommt, am Ende „Weitere Level folgen.“', () => {
+    expect(levelStatus(0, 1, span, { n: 2, opens: '2026-12-02' })).toBe(
+      '0 von 1 Level geschafft. Level\u00a02 geht am 2.\u00a0Dezember auf.',
+    );
+    expect(levelStatus(2, 3, span, { n: 4, opens: '2026-12-04' })).toBe(
+      '2 von 3 Leveln geschafft. Level\u00a04 geht am 4.\u00a0Dezember auf.',
+    );
+    expect(levelStatus(6, 6, span, null)).toBe('6 von 6 Leveln geschafft. Weitere Level folgen.');
+  });
+
+  it('Knopf: „Level N spielen“, angefangen „Weiterspielen: Level N“', () => {
+    expect(levelGo(false, 1)).toBe('Level 1 spielen');
+    expect(levelGo(true, 3)).toBe('Weiterspielen: Level 3');
+  });
 });
 
 describe('Menü und Steuerkreuz', () => {
@@ -172,12 +237,17 @@ describe('Menü und Steuerkreuz', () => {
       'Neu starten',
       'Tipp',
       'Lösung zeigen',
-      'Lektion überspringen',
-      'Lektion wählen',
+      'Level wählen',
       'Einstellungen',
       'Startbildschirm',
-      'Überspringen und „Lösung zeigen“ machen die nächste Lektion frei. Zurückkommen geht jederzeit über „Lektion wählen“.',
     ]);
+    expect([menuSkip('e'), menuSkip('l')]).toEqual(['Lektion überspringen', 'Level überspringen']);
+    expect(menuNote('e')).toBe(
+      'Überspringen und „Lösung zeigen“ machen die nächste Lektion frei. Zurückkommen geht jederzeit über „Level wählen“.',
+    );
+    expect(menuNote('l')).toBe(
+      'Überspringen und „Lösung zeigen“ machen das nächste Level frei. Zurückkommen geht jederzeit über „Level wählen“.',
+    );
   });
 
   it('Steuerkreuz: Gruppe „Laufen“, Knöpfe Hoch, Links, Rechts, Runter', () => {

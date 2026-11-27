@@ -5,16 +5,23 @@
 // Das Spielfeld steht mit Lektion 1 im HTML; ks-game.ts setzt beim Öffnen einer Lektion Titel, Schild und Knöpfe.
 // Das Schild ist leer, bis es etwas zu sagen gibt (keine Lektionshinweise). Mit den Knöpfen nach dem Sieg liegt es
 // hochkant im Himmel direkt über der Insel, quer in der Spalte neben dem Feld (game.css), nie auf der Insel.
-// Der Start trennt zwei Teile: die Einführung (spielbar, Fortschritt, Haken, großer Knopf) und die Level (nur
-// Ankündigung „kommen bald“, kein Link, nichts Goldenes), Issue #13.
+// Der Start trennt zwei Teile: die Einführung (spielbar, Fortschritt, Haken, großer Knopf), Issue #13, und die Level als
+// Adventskalender (Issue #22): Ohne JavaScript steht dort nur, wann sie aufgehen; ks-screens.ts zeigt Fortschritt und
+// Knopf, sobald ein Level aufgegangen ist. Die Levelwahl zeigt die spielbaren Level, dahinter den Ausblick.
 // Texte wörtlich aus dem Entwurf „Kistenschieber“.
 import '../styles/game.css';
 import { parseLevel } from '../lib/games/sokoban/level';
 import { LESSONS } from '../data/games/lessons';
+import { LEVELS } from '../data/games/levels';
 import {
   GAME_BUTTONS,
+  LEVEL_PART,
   LOCKED,
   MENU,
+  levelGo,
+  levelStatus,
+  menuNote,
+  menuSkip,
   PAD,
   cardTag,
   countText,
@@ -32,12 +39,29 @@ import {
   startStatus,
   thumbLabel,
 } from '../data/games/texts';
-import { CHAPTERS, LEVEL_LEDE, TEASER, chapterName, chapterRange, teaserLine } from '../data/games/teaser';
+import {
+  CHAPTERS,
+  LEVEL_LEDE,
+  TEASER,
+  chapterName,
+  chapterRange,
+  playable,
+  remaining,
+  teaserLine,
+} from '../data/games/teaser';
+import { LEVEL_TITLE, puzzleHash } from '../scripts/games/ks-router';
 import { SETTINGS_DEFAULT } from '../scripts/games/ks-save';
 
 const first = LESSONS[0]!;
 const second = LESSONS[1]!;
 const cards = LESSONS.map((l) => ({ ...l, tag: cardTag(parseLevel(l.xsb).boxes.length, l.moves) }));
+const levelCards = LEVELS.map((l) => ({ ...l, tag: cardTag(parseLevel(l.xsb).boxes.length, l.moves) }));
+const firstLevel = LEVELS[0]!;
+const lastLevel = LEVELS.at(-1)!;
+/** Kalender ohne JavaScript: nur, wann die Level aufgehen (das Datum des Builds sagt nichts über den Besuch) */
+const advent = levelStatus(0, 0, { first: firstLevel.opens, last: lastLevel.opens }, null);
+const ready = playable(CHAPTERS, LEVELS.length);
+const later = remaining(CHAPTERS, LEVELS.length);
 const { drehung, neigung } = SETTINGS_DEFAULT;
 /** Steuerkreuz in der Reihenfolge des Entwurfs; der Pfeil zeigt nach oben und wird gedreht (ks-game.ts) */
 const PAD_KEYS = [
@@ -74,17 +98,23 @@ const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
           {continueText(false, 1)}
         </a>
       </section>
-      <section class="part soon" aria-labelledby="part-level">
+      <section class="part soon" aria-labelledby="part-level" data-ks="levels">
         <h2 id="part-level">
-          {TEASER.title} <span class="pill">{TEASER.pill}</span>
+          {LEVEL_PART.title}{' '}
+          <span class="pill" data-ks="level-state">
+            {LEVEL_PART.now}
+          </span>
         </h2>
-        <p>{TEASER.note}</p>
-        <p class="sub">{teaserLine(CHAPTERS)}</p>
+        <p class="sub">{teaserLine(ready)}</p>
+        <p data-ks="level-status">{advent}</p>
+        <a class="btn big" href={puzzleHash('l', 1)} data-ks="level-go" hidden>
+          {levelGo(false, 1)}
+        </a>
       </section>
     </div>
     <div class="startbtns">
       <a class="btn big" href="#level">
-        Lektion wählen
+        {LEVEL_TITLE}
       </a>
       <a class="btn big ks-js" href="#einstellungen">
         Einstellungen
@@ -99,11 +129,11 @@ const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
 
   <section id="level" class="screen" aria-labelledby="level-title">
     <h2 id="level-title" tabindex="-1">
-      Lektion wählen
+      {LEVEL_TITLE}
     </h2>
     <p class="lede">
-      Die Lektionen werden der Reihe nach frei; Überspringen oder „Lösung zeigen“ machen die nächste trotzdem frei.
-      {LEVEL_LEDE}
+      Erst die Einführung mit {LESSONS.length} Lektionen, danach die Level in Kapiteln zu je zwölf. Alles wird der Reihe
+      nach frei; Überspringen oder „Lösung zeigen“ machen das Nächste trotzdem frei. {LEVEL_LEDE}
     </p>
     <h3>
       Einführung{' '}
@@ -126,13 +156,32 @@ const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
         </a>
       ))}
     </div>
+    {ready.map((c) => (
+      <h3>
+        {chapterName(c)} <span class="pill">{chapterRange(c)}</span>
+      </h3>
+    ))}
+    <div class="lvgrid">
+      {levelCards.map((l) => (
+        <a class="card lv" id={l.id} href={`#${l.id}`}>
+          <div class="thumb ks-js">
+            <canvas role="img" aria-label={thumbLabel(l.n, 'l')}></canvas>
+          </div>
+          <strong>
+            {l.n}. {l.title}
+          </strong>
+          <span class="tag">{l.tag}</span>
+          <span class="badge" hidden></span>
+        </a>
+      ))}
+    </div>
     <div class="part soon">
       <h3>
         {TEASER.title} <span class="pill">{TEASER.pill}</span>
       </h3>
       <p>{TEASER.note}</p>
       <ul class="chapters">
-        {CHAPTERS.map((c) => (
+        {later.map((c) => (
           <li>
             <b>{chapterName(c)}</b> <span class="pill">{chapterRange(c)}</span>
           </li>
@@ -237,13 +286,15 @@ const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
           {lockedGo(first.n)}
         </a>
         <a class="btn big" href="#level">
-          Lektion wählen
+          {LEVEL_TITLE}
         </a>
         <a class="btn big" href="#einstellungen">
           Einstellungen
         </a>
       </div>
-      <p class="note">{LOCKED.note}</p>
+      <p class="note" data-ks="note">
+        {LOCKED.note}
+      </p>
     </div>
   </section>
 
@@ -265,7 +316,7 @@ const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
           <p class="sign" aria-live="polite" data-ks="sign"></p>
           <div class="after">
             <a class="btn big primary" href={`#${second.id}`} data-ks="next" hidden>
-              {nextText(first.n)}
+              {nextText(`#${second.id}`)}
             </a>
             <button class="btn big" type="button" data-ks="again" hidden>
               {GAME_BUTTONS.again}
@@ -311,7 +362,7 @@ const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
           {MENU.solution}
         </button>
         <button class="btn big" type="button" data-menu="skip">
-          {MENU.skip}
+          {menuSkip('e')}
         </button>
         <a class="btn big" href="#level">
           {MENU.level}
@@ -322,7 +373,7 @@ const ARROW = 'M12 2 21.5 12H15.5V22H8.5V12H2.5Z';
         <a class="btn big" href="#start">
           {MENU.start}
         </a>
-        <p class="note">{MENU.note}</p>
+        <p class="note">{menuNote('e')}</p>
       </dialog>
     </div>
   </section>

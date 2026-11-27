@@ -1,6 +1,7 @@
-// Fortschritt der Einführung: Status je Lektion, Freischalten der Reihe nach, wo es weitergeht, Bestwerte.
-// Rein: Der Speicher kommt als Schnittstelle herein (im Browser scripts/games/ks-save.ts, im Test eine Map) und
-// liefert nur geprüfte Werte. Lektionen zählen ab 1, `count` ist die Zahl der Lektionen.
+// Fortschritt eines Pakets (Einführung oder Level): Status je Feld, Freischalten der Reihe nach, wo es weitergeht,
+// Bestwerte. Rein: Der Speicher kommt als Schnittstelle herein (im Browser scripts/games/ks-save.ts, im Test eine Map)
+// und liefert nur geprüfte Werte; dazu optional, ob ein Feld schon aufgegangen ist (Kalender der Level). Felder zählen
+// ab 1, `count` ist ihre Zahl. Die Namen sagen „Lektion“, gelten aber für beide Pakete.
 
 export interface Best {
   readonly moves: number;
@@ -13,11 +14,13 @@ export type Flag = 'skip' | 'shown';
 export interface ProgressKV {
   best(n: number): Best | null;
   flag(kind: Flag, n: number): boolean;
-  /** zuletzt geöffnete Lektion als 'e<N>' */
-  last(): string | null;
+  /** Nummer der zuletzt geöffneten Lektion */
+  last(): number | null;
   setBest(n: number, best: Best): void;
   setFlag(kind: Flag, n: number): void;
-  setLast(ref: string): void;
+  setLast(n: number): void;
+  /** Ist der Tag von Lektion n gekommen (Adventskalender)? Ohne: immer */
+  open?(n: number): boolean;
 }
 
 export type LessonState = 'done' | 'shown' | 'skipped' | 'open';
@@ -29,9 +32,12 @@ export function stateOf(kv: ProgressKV, n: number): LessonState {
   return kv.flag('skip', n) ? 'skipped' : 'open';
 }
 
-/** Der Reihe nach frei: Lektion 1 immer, sonst wenn die vorige nicht mehr offen ist */
+/** Ist der Tag von Lektion n gekommen? Ohne Kalender immer */
+export const dayCome = (kv: ProgressKV, n: number): boolean => kv.open?.(n) ?? true;
+
+/** Frei, wenn ihr Tag gekommen ist und sie dran ist: Lektion 1 dann immer, sonst wenn die vorige nicht mehr offen ist */
 export function unlocked(kv: ProgressKV, n: number): boolean {
-  return n <= 1 || stateOf(kv, n - 1) !== 'open';
+  return dayCome(kv, n) && (n <= 1 || stateOf(kv, n - 1) !== 'open');
 }
 
 export function doneCount(kv: ProgressKV, count: number): number {
@@ -47,18 +53,23 @@ export function skippedCount(kv: ProgressKV, count: number): number {
   return skipped;
 }
 
-/** Erste freie offene Lektion; ist keine mehr offen, die letzte */
-export function firstPlayable(kv: ProgressKV, count: number): number {
+/** Erste freie offene Lektion, sonst 0 */
+export function nextOpen(kv: ProgressKV, count: number): number {
   for (let n = 1; n <= count; n++) if (unlocked(kv, n) && stateOf(kv, n) === 'open') return n;
-  return count;
+  return 0;
 }
 
-export const refOf = (n: number): string => `e${n}`;
+/** Erste freie offene Lektion; ist keine mehr offen, die letzte freie (ohne Kalender die letzte), sonst 1 */
+export function firstPlayable(kv: ProgressKV, count: number): number {
+  const n = nextOpen(kv, count);
+  if (n) return n;
+  for (let k = count; k > 1; k--) if (unlocked(kv, k)) return k;
+  return 1;
+}
 
 /** Zuletzt geöffnete Lektion, wenn es sie gibt und sie frei ist, sonst 0 */
 function lastOpened(kv: ProgressKV, count: number): number {
-  const m = /^e(\d+)$/.exec(kv.last() ?? '');
-  const n = m ? Number(m[1]) : 0;
+  const n = kv.last() ?? 0;
   return n >= 1 && n <= count && unlocked(kv, n) ? n : 0;
 }
 
@@ -70,7 +81,7 @@ export function lastRef(kv: ProgressKV, count: number): number {
 /** Lektion geöffnet: nur eine freie wird als letzte gemerkt */
 export function markOpened(kv: ProgressKV, n: number): boolean {
   if (!unlocked(kv, n)) return false;
-  kv.setLast(refOf(n));
+  kv.setLast(n);
   return true;
 }
 

@@ -86,12 +86,27 @@ describe('Spec: Speichern', () => {
     expect(Object.keys(KEYS)).toEqual(['best', 'skip', 'shown', 'last']);
     const keys = [
       ...Object.keys(SETTINGS_DEFAULT),
-      KEYS.best(1).replace(/1$/, 'N'),
-      KEYS.skip(1).replace(/1$/, 'N'),
-      KEYS.shown(1).replace(/1$/, 'N'),
-      KEYS.last,
+      ...(['e', 'l'] as const).flatMap((pack) => [
+        KEYS.best(1, pack).replace(/1$/, 'N'),
+        KEYS.skip(1, pack).replace(/1$/, 'N'),
+        KEYS.shown(1, pack).replace(/1$/, 'N'),
+        KEYS.last(pack),
+      ]),
     ];
-    expect(keys).toEqual(['drehung', 'neigung', 'hand', 'ton', 'best.eN', 'skip.eN', 'shown.eN', 'last']);
+    expect(keys).toEqual([
+      'drehung',
+      'neigung',
+      'hand',
+      'ton',
+      'best.eN',
+      'skip.eN',
+      'shown.eN',
+      'last',
+      'best.lN',
+      'skip.lN',
+      'shown.lN',
+      'last.l',
+    ]);
     expect(keys.map((k) => `${PREFIX}${k}`).filter((k) => !spec.includes(`\`${k}\``))).toEqual([]);
     expect(spec).toContain(`\`${PREFIX}probe\``);
   });
