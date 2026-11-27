@@ -49,10 +49,14 @@ body.ks-body {
 .ks [tabindex='-1']:focus {
   outline: none;
 }
+/* Das Spielfeld zeigt seinen Rahmen nur nach Tab (Klasse tabnav, ks-kistenschieber.ts), nie nach Klick oder Pfeiltasten */
+.ks canvas:focus {
+  outline: none;
+}
 .ks a:focus-visible,
 .ks button:focus-visible,
 .ks input:focus-visible,
-.ks canvas:focus-visible {
+.ks.tabnav canvas:focus-visible {
   outline: 3px solid var(--gold);
   outline-offset: 2px;
 }

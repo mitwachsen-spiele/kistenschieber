@@ -65,10 +65,14 @@ class KsKistenschieber extends HTMLElement {
     addEventListener(
       'keydown',
       (e) => {
+        // Rahmen ums Spielfeld nur, wenn es mit Tab angesteuert wurde: Pfeiltasten machen den Fokus im Browser
+        // ebenfalls „sichtbar“, das Feld läge sonst beim Spielen ständig in einem goldenen Rahmen (game.css)
+        this.classList.toggle('tabnav', e.key === 'Tab');
         if (this.shown === 'spiel') this.play.onKey(e);
       },
       { signal },
     );
+    addEventListener('pointerdown', () => this.classList.remove('tabnav'), { signal, capture: true });
     // Neu zeichnen, wenn sich die Breite einer Szene ändert (Fenster) oder Breite oder Höhe des Spielfelds (Drehen)
     this.observer = new ResizeObserver((entries) => {
       for (const e of entries) {

@@ -218,6 +218,22 @@ test.describe('Spielfeld', () => {
     await expect(page.locator(FIELD)).toBeFocused();
     await expect(spiel(page)).toBeVisible();
   });
+
+  test('Rahmen ums Feld nur nach Tab, nicht nach Klick und Pfeiltasten (#8)', async ({ page }) => {
+    await openGame(page, { hash: '#lektion-1' });
+    const field = page.locator(FIELD);
+    const outline = () => field.evaluate((cv) => getComputedStyle(cv).outlineStyle);
+    await field.click();
+    await press(page, 'ArrowRight');
+    await expect(field).toBeFocused();
+    expect(await outline()).toBe('none');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
+    await expect(field).toBeFocused();
+    expect(await outline()).toBe('solid');
+    await press(page, 'ArrowLeft');
+    expect(await outline()).toBe('none');
+  });
 });
 
 test.describe('Konfetti', () => {
