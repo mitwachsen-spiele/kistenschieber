@@ -47,11 +47,18 @@ export const settled = (page: Page) => expect(game(page)).toHaveClass(/\bsettled
 export const gotoGame = (page: Page, hash = '') => page.goto(`/${hash}`);
 
 /**
- * Test-Uhr der Seite, vor ihrem ersten Skript: `performance.now()` steht, bis `render` sie vorstellt; mit `__KS_TEST`
- * zeichnet das Spiel sofort statt im nächsten Bild (ks-kistenschieber.ts)
+ * Standard-Datum der Test-Uhr: vor dem Adventskalender, damit die Tests nicht vom Tag abhängen, an dem sie laufen. Tests
+ * der Level stellen ihr Datum selbst (`openGame(page, { date })`)
  */
-function installClock() {
-  const clock = { ms: 0 };
+export const BEFORE_ADVENT = '2026-11-27T12:00:00+01:00';
+
+/**
+ * Test-Uhr der Seite, vor ihrem ersten Skript: `performance.now()` steht, bis `render` sie vorstellt; mit `__KS_TEST`
+ * zeichnet das Spiel sofort statt im nächsten Bild (ks-kistenschieber.ts). `date` ist das Datum für den
+ * Adventskalender (ms seit 1970)
+ */
+function installClock(date: number) {
+  const clock = { ms: 0, date };
   const t0 = performance.now();
   (window as unknown as { __KS_TEST: typeof clock }).__KS_TEST = clock;
   performance.now = () => t0 + clock.ms;
@@ -72,13 +79,21 @@ export async function seed(page: Page, values: Record<string, unknown>) {
   );
 }
 
-/** Spiel öffnen (mit Hash, Speicher vorbelegt, Test-Uhr), bis es steht */
+/**
+ * Spiel öffnen (mit Hash, Speicher vorbelegt, Test-Uhr samt Datum, Standard `BEFORE_ADVENT`), bis es steht. Ohne
+ * Test-Uhr gilt das echte Datum
+ */
 export async function openGame(
   page: Page,
-  { hash = '', store = {}, clock = true }: { hash?: string; store?: Record<string, unknown>; clock?: boolean } = {},
+  {
+    hash = '',
+    store = {},
+    clock = true,
+    date = BEFORE_ADVENT,
+  }: { hash?: string; store?: Record<string, unknown>; clock?: boolean; date?: string } = {},
 ) {
   if (Object.keys(store).length) await seed(page, store);
-  if (clock) await page.addInitScript(installClock);
+  if (clock) await page.addInitScript(installClock, Date.parse(date));
   await gotoGame(page, hash);
   await settled(page);
   return game(page);

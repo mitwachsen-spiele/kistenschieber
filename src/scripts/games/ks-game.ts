@@ -27,8 +27,8 @@ import {
   undo,
 } from '../../lib/games/sokoban/state';
 import { KAJE_DECO } from '../../data/games/kaje';
-import { LESSONS, type Lesson } from '../../data/games/lessons';
-import { countText, fieldLabel, lessonName, nextText, signText } from '../../data/games/texts';
+import { COUNTS, type Pack, PUZZLES, type Puzzle } from '../../data/games/packs';
+import { countText, fieldLabel, menuNote, menuSkip, nextText, puzzleName, signText } from '../../data/games/texts';
 import { type KeyAction, keepsKey, keyAction, isTap, padAngles, tapAt } from './ks-input';
 import { nextHash } from './ks-router';
 import { type Cue, cues } from './ks-sound';
@@ -65,8 +65,11 @@ export class GameScreen {
   private readonly offer: HTMLButtonElement;
   private readonly dialog: HTMLDialogElement;
   private readonly menuTitle: HTMLElement;
+  private readonly menuSkip: HTMLElement;
+  private readonly menuNote: HTMLElement;
   private readonly pad: HTMLElement;
-  private lesson: Lesson = LESSONS[0]!;
+  private pack: Pack = 'e';
+  private lesson: Puzzle = PUZZLES.e[0]!;
   private L: Level = parseLevel(this.lesson.xsb);
   private g: Game = newGame(this.L);
   private fx: Particle[] = [];
@@ -102,6 +105,8 @@ export class GameScreen {
     this.offer = need(root, '[data-ks="offer"]');
     this.dialog = need(root, 'dialog.menu');
     this.menuTitle = need(this.dialog, 'h2');
+    this.menuSkip = need(this.dialog, '[data-menu="skip"]');
+    this.menuNote = need(this.dialog, '.note');
     this.pad = need(root, '.pad');
     this.extras = later(() =>
       import('./ks-menu').then((m) => {
@@ -144,22 +149,26 @@ export class GameScreen {
     cv.addEventListener('pointerup', (e) => this.pointerUp(e), opts);
   }
 
-  /** Lektion n (frei) öffnen: neues Spiel, als letzte gemerkt, Texte der Lektion; den nachgeladenen Teil holen */
-  enter(n: number) {
-    this.lesson = LESSONS[n - 1] ?? LESSONS[0]!;
+  /** Lektion oder Level n (frei) öffnen: neues Spiel, als letztes gemerkt, Texte dazu; den nachgeladenen Teil holen */
+  enter(pack: Pack, n: number) {
+    this.pack = pack;
+    this.lesson = PUZZLES[pack][n - 1] ?? PUZZLES.e[0]!;
     this.L = parseLevel(this.lesson.xsb);
     this.deco = decoFor(this.L, KAJE_DECO);
     this.g = newGame(this.L, { sol: this.lesson.sol, reduce: reduced() });
     this.fx = [];
     this.burstWanted = false;
     this.hits = null;
-    markOpened(this.host.kv, n);
-    const name = lessonName(this.lesson);
+    markOpened(this.kv(), n);
+    const name = puzzleName(pack, this.lesson);
     this.title.textContent = name;
     this.menuTitle.textContent = name;
-    this.canvas.setAttribute('aria-label', fieldLabel(this.lesson));
-    this.next.href = nextHash(n, LESSONS.length);
-    this.next.textContent = nextText(n);
+    this.menuSkip.textContent = menuSkip(pack);
+    this.menuNote.textContent = menuNote(pack);
+    this.canvas.setAttribute('aria-label', fieldLabel(this.lesson, pack));
+    const next = this.nextHash();
+    this.next.href = next;
+    this.next.textContent = nextText(next);
     this.gin.classList.toggle('left', this.host.settings().hand === 'links');
     // Pfeile des Steuerkreuzes in die Bildschirmrichtung der Kamera drehen
     const angles = padAngles(screenDirs(this.host.camera()));
@@ -174,7 +183,17 @@ export class GameScreen {
   /** Für Updates der App (pwa-update.ts): „Geschafft!“ (selbst gelöst), Menü offen, wohin es danach weitergeht */
   moment(): Pick<GameMoment, 'won' | 'menuOpen' | 'resume'> {
     const won = this.g.won && !this.g.shownWin;
-    return { won, menuOpen: this.dialog.open, resume: won ? nextHash(this.lesson.n, LESSONS.length) : null };
+    return { won, menuOpen: this.dialog.open, resume: won ? this.nextHash() : null };
+  }
+
+  /** Fortschritt des Pakets, das gerade gespielt wird */
+  private kv() {
+    return this.host.kv[this.pack];
+  }
+
+  /** Wohin es nach dem Sieg und beim Überspringen geht; ein Level erst, wenn sein Tag gekommen ist */
+  private nextHash(): string {
+    return nextHash(this.pack, this.lesson.n, COUNTS, (k) => this.host.kv.l.open?.(k) ?? true);
   }
 
   /** Den Bildschirm verlassen: ein offenes Menü schließen */
@@ -218,7 +237,7 @@ export class GameScreen {
       // Erst die Auswahl aufheben, sonst das Menü (nach dieser Taste, sonst schließt Esc es gleich wieder)
       if (g.sel !== null) this.apply({ ...g, sel: null, hint: null });
       else setTimeout(() => this.openMenu(), 0);
-    } else if (a.kind === 'next') location.hash = nextHash(this.lesson.n, LESSONS.length);
+    } else if (a.kind === 'next') location.hash = this.nextHash();
     else if (g.auto) this.apply(stopAuto(g));
   }
 
@@ -287,8 +306,8 @@ export class GameScreen {
 
   /** „Lektion überspringen“, „Zu knifflig? Überspringen“: merken (nur ohne Bestwert) und weiter */
   private skip() {
-    markSkipped(this.host.kv, this.lesson.n);
-    location.hash = nextHash(this.lesson.n, LESSONS.length);
+    markSkipped(this.kv(), this.lesson.n);
+    location.hash = this.nextHash();
   }
 
   /** Neuer Zustand: Nebenwirkungen, Anzeige, neu zeichnen */
@@ -302,7 +321,7 @@ export class GameScreen {
 
   private effects(prev: Game, now: number) {
     const g = this.g;
-    const { kv } = this.host;
+    const kv = this.kv();
     const heard = cues(prev, g, this.lastStep);
     this.lastStep = heard.lastStep;
     if (heard.cues.length) this.sound(heard.cues);
@@ -330,7 +349,7 @@ export class GameScreen {
     const active = document.activeElement;
     const had = active && this.msg.contains(active) ? active : null;
     this.count.textContent = countText(g.moves);
-    const text = signText(g.msg, this.lesson, g.moves);
+    const text = signText(g.msg, this.lesson, g.moves, this.pack);
     if (this.sign.textContent !== text) this.sign.textContent = text;
     const kind = msgKind(g.msg);
     this.sign.className = kind ? `sign ${kind}` : 'sign';

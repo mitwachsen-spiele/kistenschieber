@@ -5,6 +5,7 @@
 // gezeigten Bildschirms ist gezeichnet; jeder Bildschirmwechsel nimmt die Klasse weg, bis sein Bild steht).
 // Test-Uhr: Mit `window.__KS_TEST` zeichnet die Komponente sofort statt im nächsten Bild; Tests rufen `frame` selbst
 // (auch für jeden Takt einer Animation: ohne Test-Uhr läuft der Takt per requestAnimationFrame, solange etwas läuft).
+// `__KS_TEST.date` stellt das Datum für den Adventskalender der Level (ms seit 1970), sonst gilt Date.now().
 // Klasse `playing` (an der Komponente und an body) nur, solange eine freie Lektion gespielt wird: Spielfeld im ganzen
 // Bildschirm, ohne Scrollen, Bildschirm bleibt an (Wake Lock). Ein Bildschirmwechsel schließt das Menü im Spiel.
 // Ton (sfx.ts): Den AudioContext legt erst die erste Geste an (Taste, Zeiger), nie mit „Ton: Aus“; ist die Seite
@@ -12,9 +13,11 @@
 import { type Camera, clampCamera, makeCamera } from '../../lib/games/oblique/camera';
 import { browserStore } from './browser-store';
 import { loadSettings, progressKV, saveSetting, type Settings, type Store } from './ks-save';
-import { unlocked } from '../../lib/games/sokoban/progress';
+import { lastRef, unlocked } from '../../lib/games/sokoban/progress';
+import { isOpen } from '../../data/games/levels';
+import { COUNTS, type Pack } from '../../data/games/packs';
 import { route, type Route } from './ks-router';
-import { COUNT, type Host, LevelScreen, LockedScreen, SettingsScreen, StartScreen } from './ks-screens';
+import { type Host, LevelScreen, LockedScreen, SettingsScreen, type Resume, StartScreen } from './ks-screens';
 import { GameScreen, type Spot } from './ks-game';
 import { watchTouch } from './ks-touch';
 import { Sfx } from './sfx';
@@ -36,6 +39,8 @@ class KsKistenschieber extends HTMLElement {
   private wake!: ScreenLock;
   private readonly sfx = new Sfx();
   private kv!: Host['kv'];
+  /** Paket, das zuletzt gespielt wurde: Ziel von „Zurück zum Spiel“ */
+  private lastPack: Pack = 'e';
   private shown: Section = 'start';
   private queued = false;
   private readonly sizes = new WeakMap<Element, string>();
@@ -50,23 +55,7 @@ class KsKistenschieber extends HTMLElement {
     this.cam = this.makeCam();
     watchTouch(signal);
     this.wake = watchWakeLock(signal);
-    this.kv = progressKV(this.store);
-    const host: Host = {
-      kv: this.kv,
-      settings: () => this.settings,
-      set: (key, value) => {
-        this.settings = { ...this.settings, [key]: value };
-        saveSetting(this.store, key, value);
-        this.cam = this.makeCam();
-        if (key === 'ton') {
-          this.sfx.muted = value === 'aus';
-          // Ausgeschaltet schläft der Ton; eingeschaltet weckt ihn der Klick auf „An“
-          if (this.sfx.muted) this.sfx.suspend();
-          else this.sfx.unlock();
-        }
-      },
-      camera: () => this.cam,
-    };
+    const host = this.makeHost();
     this.start = new StartScreen(this.section('start'), host);
     this.prefs = new SettingsScreen(this.section('einstellungen'), host, signal);
     this.levels = new LevelScreen(this.section('level'), host);
@@ -127,6 +116,34 @@ class KsKistenschieber extends HTMLElement {
     this.classList.add('ready');
   }
 
+  /** Jetzt für den Adventskalender; die Browser-Tests stellen das Datum mit `__KS_TEST.date` */
+  private now(): number {
+    return (window as { __KS_TEST?: { date?: number } }).__KS_TEST?.date ?? Date.now();
+  }
+
+  /** Was die Bildschirme brauchen: Fortschritt beider Pakete (Level mit Kalender), Uhr, Einstellungen, Kamera */
+  private makeHost(): Host {
+    this.kv = { e: progressKV(this.store, 'e'), l: progressKV(this.store, 'l', (n) => isOpen(n, this.now())) };
+    return {
+      kv: this.kv,
+      now: () => this.now(),
+      resume: () => this.resume(),
+      settings: () => this.settings,
+      set: (key, value) => {
+        this.settings = { ...this.settings, [key]: value };
+        saveSetting(this.store, key, value);
+        this.cam = this.makeCam();
+        if (key === 'ton') {
+          this.sfx.muted = value === 'aus';
+          // Ausgeschaltet schläft der Ton; eingeschaltet weckt ihn der Klick auf „An“
+          if (this.sfx.muted) this.sfx.suspend();
+          else this.sfx.unlock();
+        }
+      },
+      camera: () => this.cam,
+    };
+  }
+
   disconnectedCallback() {
     this.globals?.abort();
     this.sfx.close();
@@ -142,8 +159,15 @@ class KsKistenschieber extends HTMLElement {
   }
 
   private sectionFor(r: Route): Section {
-    if (r.screen !== 'lektion') return r.screen;
-    return r.n !== null && unlocked(this.kv, r.n) ? 'spiel' : 'gesperrt';
+    if (r.screen !== 'puzzle') return r.screen;
+    return r.n !== null && unlocked(this.kv[r.pack ?? 'e'], r.n) ? 'spiel' : 'gesperrt';
+  }
+
+  /** Zurück zum Spiel: beim zuletzt gespielten Paket, ein Level nur, solange eins frei ist */
+  private resume(): Resume {
+    const n = lastRef(this.kv[this.lastPack], COUNTS[this.lastPack]);
+    if (this.lastPack === 'l' && unlocked(this.kv.l, n)) return { pack: 'l', n };
+    return { pack: 'e', n: lastRef(this.kv.e, COUNTS.e) };
   }
 
   private section(id: string): HTMLElement {
@@ -158,7 +182,7 @@ class KsKistenschieber extends HTMLElement {
    * Link liegen bleibt und Screenreader den Wechsel ansagen
    */
   private show(moved = false) {
-    const r = route(location.hash, COUNT);
+    const r = route(location.hash, COUNTS);
     if (r.replace !== null) history.replaceState(history.state, '', r.replace || location.pathname + location.search);
     this.classList.remove('settled');
     const id = this.sectionFor(r);
@@ -173,8 +197,10 @@ class KsKistenschieber extends HTMLElement {
     if (id === 'start') this.start.enter();
     else if (id === 'einstellungen') this.prefs.enter();
     else if (id === 'level') this.levels.enter();
-    else if (playing) this.play.enter(r.n ?? 1);
-    else this.locked.enter(r.n);
+    else if (playing) {
+      this.lastPack = r.pack ?? 'e';
+      this.play.enter(this.lastPack, r.n ?? 1);
+    } else this.locked.enter(r.pack ?? 'e', r.n);
     // Der Browser springt sonst zum Element mit der id aus dem Hash (der Karte der Lektion)
     scrollTo({ top: 0, left: 0, behavior: 'instant' });
     if (moved) {

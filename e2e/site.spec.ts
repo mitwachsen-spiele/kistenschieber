@@ -9,9 +9,11 @@ const START = '#start canvas';
 const PREVIEW = '#einstellungen canvas';
 
 const screen = (page: Page, id: string) => page.locator(`ks-kistenschieber > section#${id}`);
-/** Teile des Startbildschirms: die spielbare Einführung und die Level, die erst kommen */
-const intro = (page: Page) => page.locator('#start .part.now');
-const soon = (page: Page) => page.locator('#start .part.soon');
+/** Teile des Startbildschirms: die spielbare Einführung und die Level (vor dem 1. Dezember nur Ankündigung) */
+const intro = (page: Page) => page.locator('#start [data-ks="intro"]');
+const soon = (page: Page) => page.locator('#start [data-ks="levels"]');
+/** Text der Level vor dem Adventskalender */
+const ADVENT = 'Vom 1. Dezember bis 6. Dezember geht jeden Tag ein neues Level auf.';
 
 test.describe('Startbildschirm', () => {
   test('zeigt Titel, Knöpfe und die gezeichnete erste Lektion, ohne Fehler', async ({ page }) => {
@@ -22,7 +24,7 @@ test.describe('Startbildschirm', () => {
     const start = screen(page, 'start');
     await expect(intro(page).getByText('0 von 15 Lektionen geschafft')).toBeVisible();
     await expect(intro(page).getByRole('link', { name: 'Spielen', exact: true })).toHaveAttribute('href', '#lektion-1');
-    await expect(start.getByRole('link', { name: 'Lektion wählen' })).toHaveAttribute('href', '#level');
+    await expect(start.getByRole('link', { name: 'Level wählen' })).toHaveAttribute('href', '#level');
     await expect(start.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute('href', '#einstellungen');
     await expect(page.getByRole('img', { name: 'Lektion 1: Erster Schubs als Bild' })).toBeVisible();
     expect(await drawn(page, START)).toBe(true);
@@ -49,7 +51,7 @@ test.describe('Startbildschirm', () => {
     await expect(page.getByRole('link', { name: 'Spielen', exact: true })).toHaveAttribute('href', '#lektion-1');
   });
 
-  test('zwei Teile: die Einführung spielbar mit dem goldenen Knopf, die Level „kommen bald“ ohne Link und ohne Gold', async ({
+  test('zwei Teile: die Einführung spielbar mit dem goldenen Knopf, die Level vor dem 1. Dezember ohne Link und ohne Gold', async ({
     page,
   }) => {
     await openGame(page);
@@ -58,11 +60,12 @@ test.describe('Startbildschirm', () => {
     await expect(intro(page).getByText('Lernen in 15 Lektionen')).toBeVisible();
     await expect(intro(page).locator('.btn.primary')).toHaveText('Spielen');
     await expect(start.locator('.btn.primary')).toHaveCount(1);
-    await expect(start.getByRole('heading', { level: 2, name: 'Level kommen bald' })).toBeVisible();
-    await expect(soon(page).getByText('Noch nicht spielbar.')).toBeVisible();
-    await expect(soon(page).getByText('Kapitel 1: Am Kai und Kapitel 2: Im Speicher, Level 1 bis 24')).toBeVisible();
+    await expect(start.getByRole('heading', { level: 2, name: 'Level ab 1. Dezember' })).toBeVisible();
+    await expect(soon(page).getByText(ADVENT)).toBeVisible();
+    await expect(soon(page).getByText('Kapitel 1: Am Kai, Level 1 bis 6')).toBeVisible();
+    await expect(soon(page)).toHaveClass(/\bsoon\b/);
     // Nur Ankündigung: nichts zum Anklicken, kein Zeiger, kein Gold, nicht im Tab-Weg
-    await expect(soon(page).locator('a, button, [tabindex]')).toHaveCount(0);
+    await expect(soon(page).locator('a:visible, button:visible, [tabindex]')).toHaveCount(0);
     const look = await soon(page).evaluate((el) => {
       const cs = getComputedStyle(el);
       return { cursor: cs.cursor, bg: cs.backgroundColor, outline: cs.outlineStyle };
@@ -105,7 +108,7 @@ test.describe('Startbildschirm', () => {
     );
   });
 
-  test('die Pillen sehen verschieden aus: „jetzt spielbar“ hell mit dunklem Rand, „kommen bald“ gedämpft', async ({
+  test('die Pillen sehen verschieden aus: „jetzt spielbar“ hell mit dunklem Rand, „ab 1. Dezember“ gedämpft', async ({
     page,
   }) => {
     await openGame(page);
@@ -114,7 +117,7 @@ test.describe('Startbildschirm', () => {
         const cs = getComputedStyle(el);
         return `${cs.backgroundColor} ${cs.color}`;
       });
-    expect(await look('#start .part.now .pill')).not.toBe(await look('#start .part.soon .pill'));
+    expect(await look('#start [data-ks="intro"] .pill')).not.toBe(await look('#start [data-ks="levels"] .pill'));
   });
 
   test('Einführung geschafft (selbst gelöst oder mit Lösung gesehen): „✓ geschafft“, „Einführung wiederholen“', async ({
@@ -132,8 +135,8 @@ test.describe('Startbildschirm', () => {
     const again = intro(page).getByRole('link', { name: 'Einführung wiederholen' });
     await expect(again).toHaveAttribute('href', '#lektion-1');
     await expect(page.getByRole('img', { name: 'Lektion 1: Erster Schubs als Bild' })).toBeVisible();
-    await expect(start.getByRole('heading', { level: 2, name: 'Level kommen bald' })).toBeVisible();
-    await start.getByRole('link', { name: 'Lektion wählen' }).click();
+    await expect(start.getByRole('heading', { level: 2, name: 'Level ab 1. Dezember' })).toBeVisible();
+    await start.getByRole('link', { name: 'Level wählen' }).click();
     await expect(page.locator('[data-ks="intro-pill"]')).toHaveText('✓ geschafft');
   });
 
@@ -252,11 +255,11 @@ test.describe('mit Touch', () => {
 });
 
 test.describe('Bildschirme per Hash', () => {
-  test('#level-3 wird zu #level, der Titel folgt dem Bildschirm', async ({ page }) => {
-    await openGame(page, { hash: '#level-3' });
+  test('#level-7 (gibt es noch nicht) wird zu #level, der Titel folgt dem Bildschirm', async ({ page }) => {
+    await openGame(page, { hash: '#level-7' });
     await expect(page).toHaveURL(/\/#level$/);
-    await expect(page.getByRole('heading', { level: 2, name: 'Lektion wählen' })).toBeVisible();
-    await expect(page).toHaveTitle('Lektion wählen · Kistenschieber');
+    await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeVisible();
+    await expect(page).toHaveTitle('Level wählen · Kistenschieber');
     await expect(screen(page, 'start')).toBeHidden();
   });
 
@@ -290,8 +293,8 @@ test.describe('Bildschirme per Hash', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'Einstellungen' })).toBeFocused();
     await page.getByRole('link', { name: 'Startbildschirm' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Kistenschieber' })).toBeFocused();
-    await screen(page, 'start').getByRole('link', { name: 'Lektion wählen' }).click();
-    await expect(page.getByRole('heading', { level: 2, name: 'Lektion wählen' })).toBeFocused();
+    await screen(page, 'start').getByRole('link', { name: 'Level wählen' }).click();
+    await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeFocused();
     await page.locator('#lektion-1').click();
     await expect(page.locator('#spiel canvas')).toBeFocused();
     await page.evaluate(() => (location.hash = '#level'));
@@ -331,7 +334,7 @@ test.describe('Levelwahl', () => {
   test('leer: nur Lektion 1 frei, 2 bis 15 „Noch zu“ und ausgegraut; Vorschauen gezeichnet', async ({ page }) => {
     const errors = watchErrors(page);
     await openGame(page, { hash: '#level' });
-    await expect(page.getByText('Die Lektionen werden der Reihe nach frei;')).toBeVisible();
+    await expect(page.getByText('Erst die Einführung mit 15 Lektionen, danach die Level')).toBeVisible();
     await expect(page.getByRole('heading', { level: 3, name: 'Einführung 15 Lektionen' })).toBeVisible();
     await expect(card(page, 1)).not.toHaveClass(/\blocked\b/);
     await expect(badge(page, 1)).toBeHidden();
@@ -383,7 +386,7 @@ test.describe('Levelwahl', () => {
     await openGame(page, { hash: '#level', store });
     await expect(page.locator('[data-ks="intro-pill"]')).toHaveText('15 Lektionen');
     await expect(page.locator('[data-ks="intro-pill"]')).not.toHaveClass(/\bon\b/);
-    await expect(page.locator('#level .card.locked')).toHaveCount(0);
+    await expect(page.locator('#level [id^="lektion-"].card.locked')).toHaveCount(0);
   });
 
   test('alle geschafft oder mit Lösung gesehen: Pille „✓ geschafft“', async ({ page }) => {
@@ -393,22 +396,26 @@ test.describe('Levelwahl', () => {
     await expect(page.locator('[data-ks="intro-pill"]')).toHaveText('✓ geschafft');
     await expect(page.locator('[data-ks="intro-pill"]')).toHaveClass(/\bon\b/);
   });
-  test('Ausblick: genau Kapitel 1 und 2, kein Link auf ein Level', async ({ page }) => {
+  test('Kapitel 1 mit Level 1 bis 6, dahinter der Ausblick auf Level 7 bis 24 ohne Link', async ({ page }) => {
     await openGame(page, { hash: '#level' });
-    await expect(page.getByRole('heading', { level: 3, name: 'Level kommen bald' })).toBeVisible();
-    await expect(screen(page, 'level').getByText('Noch nicht spielbar.')).toBeVisible();
-    await expect(page.getByText('Spielbar ist bisher nur die Einführung, die Level kommen bald.')).toBeVisible();
-    // Dieselbe gestrichelte Karte wie auf dem Startbildschirm, ohne Link
+    await expect(
+      page.getByRole('heading', { level: 3, name: 'Kapitel 1: Am Kai Level 1 bis 6, 2 bis 3 Kisten' }),
+    ).toBeVisible();
+    await expect(page.locator('#level a[href^="#level-"]')).toHaveCount(6);
+    await expect(page.getByRole('heading', { level: 3, name: 'Weitere Level kommen bald' })).toBeVisible();
+    await expect(
+      page.getByText('Die Level gehen wie ein Adventskalender auf: Level 1 am 1. Dezember, dann jeden Tag eins mehr.'),
+    ).toBeVisible();
+    // Dieselbe gestrichelte Ankündigung wie auf dem Startbildschirm vor dem 1. Dezember, ohne Link
     const card = screen(page, 'level').locator('.part.soon');
     await expect(card).toContainText('Noch nicht spielbar.');
     expect(await card.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('dashed');
     const chapters = page.locator('#level .chapters li');
     await expect(chapters).toHaveText([
-      'Kapitel 1: Am Kai Level 1 bis 12, 2 bis 3 Kisten',
+      'Kapitel 1: Am Kai Level 7 bis 12, 2 bis 3 Kisten',
       'Kapitel 2: Im Speicher Level 13 bis 24, 3 bis 4 Kisten',
     ]);
-    await expect(page.locator('#level .chapters a')).toHaveCount(0);
-    await expect(page.locator('a[href^="#level-"]')).toHaveCount(0);
+    await expect(card.locator('a')).toHaveCount(0);
     await expect(page.getByText('Zollhof')).toHaveCount(0);
   });
 
@@ -425,7 +432,7 @@ test.describe('Levelwahl', () => {
       locked.getByText('Schaff zuerst Lektion 1: Erster Schubs oder überspring es; dann geht es weiter.'),
     ).toBeVisible();
     await expect(locked.getByRole('link', { name: 'Zu Lektion 1' })).toHaveAttribute('href', '#lektion-1');
-    await expect(locked.getByRole('link', { name: 'Lektion wählen' })).toHaveAttribute('href', '#level');
+    await expect(locked.getByRole('link', { name: 'Level wählen' })).toHaveAttribute('href', '#level');
     await expect(locked.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute('href', '#einstellungen');
     await expect(locked.getByText('Alles wird der Reihe nach frei.')).toBeVisible();
     await expect(page).toHaveTitle('Lektion 5 · Kistenschieber');
@@ -475,7 +482,8 @@ test.describe('ohne JavaScript', () => {
     // Beide Teile des Starts stehen auch ohne JavaScript als Text da
     await expect(page.getByRole('heading', { level: 2, name: 'Einführung jetzt spielbar' })).toBeVisible();
     await expect(page.getByText('0 von 15 Lektionen geschafft')).toBeVisible();
-    await expect(page.getByRole('heading', { level: 2, name: 'Level kommen bald' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Level Adventskalender' })).toBeVisible();
+    await expect(page.getByText(ADVENT)).toBeVisible();
     await expect(screen(page, 'einstellungen')).toBeHidden();
     await expect(page.getByRole('link', { name: 'Einstellungen' })).toBeHidden();
   });

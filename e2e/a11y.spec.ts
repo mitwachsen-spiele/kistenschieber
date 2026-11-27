@@ -40,7 +40,7 @@ for (const colorScheme of ['light', 'dark'] as const)
 
     test('Barrierefrei: Levelwahl', async ({ page }) => {
       await openGame(page, { hash: '#level' });
-      await expect(page.getByRole('heading', { level: 2, name: 'Lektion wählen' })).toBeVisible();
+      await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeVisible();
       expect(await violations(page)).toEqual([]);
     });
 

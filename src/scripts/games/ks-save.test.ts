@@ -69,7 +69,7 @@ describe('Fortschritt', () => {
     kv.setBest(1, { moves: 9, pushes: 4 });
     kv.setFlag('skip', 2);
     kv.setFlag('shown', 3);
-    kv.setLast('e3');
+    kv.setLast(3);
     expect(Object.fromEntries(store.data)).toEqual({
       'kistenschieber.best.e1': '{"moves":9,"pushes":4}',
       'kistenschieber.skip.e2': 'true',
@@ -78,8 +78,36 @@ describe('Fortschritt', () => {
     });
     expect(kv.best(1)).toEqual({ moves: 9, pushes: 4 });
     expect([kv.flag('skip', 2), kv.flag('shown', 3), kv.flag('skip', 3)]).toEqual([true, true, false]);
-    expect(kv.last()).toBe('e3');
+    expect(kv.last()).toBe(3);
     expect(KEYS.best(7)).toBe('best.e7');
+  });
+
+  it('Level: Schlüssel best.lN, skip.lN, shown.lN, last.l, getrennt von der Einführung', () => {
+    const store = memoryStore({ 'best.e1': '{"moves":9,"pushes":4}', last: '"e5"' });
+    const kv = progressKV(store, 'l');
+    expect([kv.best(1), kv.last()]).toEqual([null, null]);
+    kv.setBest(1, { moves: 25, pushes: 10 });
+    kv.setFlag('skip', 2);
+    kv.setFlag('shown', 3);
+    kv.setLast(2);
+    expect(Object.fromEntries(store.data)).toMatchObject({
+      'kistenschieber.best.l1': '{"moves":25,"pushes":10}',
+      'kistenschieber.skip.l2': 'true',
+      'kistenschieber.shown.l3': 'true',
+      'kistenschieber.last.l': '"l2"',
+      'kistenschieber.last': '"e5"',
+    });
+    expect(kv.last()).toBe(2);
+    expect(progressKV(store).last()).toBe(5);
+    expect(progressKV(store).best(1)).toEqual({ moves: 9, pushes: 4 });
+    expect(progressKV(memoryStore({ 'last.l': '"e2"' }), 'l').last()).toBeNull();
+  });
+
+  it('Level mit Kalender: open kommt durch, ohne gibt es keins', () => {
+    const kv = progressKV(memoryStore(), 'l', (n) => n <= 2);
+    expect([kv.open?.(2), kv.open?.(3)]).toEqual([true, false]);
+    expect(unlocked(kv, 1)).toBe(true);
+    expect('open' in progressKV(memoryStore())).toBe(false);
   });
 
   it.each([
@@ -136,7 +164,7 @@ describe('Speicher, der Fehler wirft', () => {
     expect(() => {
       kv.setBest(1, { moves: 9, pushes: 4 });
       kv.setFlag('skip', 1);
-      kv.setLast('e1');
+      kv.setLast(1);
     }).not.toThrow();
     expect(lastRef(kv, 15)).toBe(1);
   });

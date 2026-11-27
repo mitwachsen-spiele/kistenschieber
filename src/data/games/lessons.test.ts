@@ -162,7 +162,7 @@ function memoryKV(): ProgressKV & { readonly data: Map<string, unknown> } {
     last: () => null,
     setBest: (n, best) => void data.set(`best.e${n}`, best),
     setFlag: (kind, n) => void data.set(`${kind}.e${n}`, true),
-    setLast: (ref) => void data.set('last', ref),
+    setLast: (n) => void data.set('last', n),
   };
 }
 

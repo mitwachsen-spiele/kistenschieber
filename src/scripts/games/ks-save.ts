@@ -3,6 +3,7 @@
 // Falsches oder ein Speicher, der Fehler wirft (privates Fenster, voller Speicher), ergibt den Standardwert. Schreiben
 // scheitert still, das Spiel läuft dann ohne Speichern weiter. Keine Migration (neue App, Spielstände dürfen verloren gehen).
 import type { Best, Flag, ProgressKV } from '../../lib/games/sokoban/progress';
+import type { Pack } from '../../data/games/packs';
 
 export const PREFIX = 'kistenschieber.';
 
@@ -26,12 +27,17 @@ export interface Settings {
 export const SETTINGS_DEFAULT: Settings = { drehung: 20, neigung: 50, hand: 'rechts', ton: 'an' };
 export const RANGES = { drehung: [0, 45], neigung: [20, 80] } as const;
 
-/** Schlüssel ohne Präfix */
+export type { Pack };
+
+/**
+ * Schlüssel ohne Präfix, je Paket: best.e3, skip.l2 …; zuletzt geöffnet `last` für die Einführung (Wert "e3", wie seit
+ * dem Start der App) und `last.l` für die Level (Wert "l2")
+ */
 export const KEYS = {
-  best: (n: number) => `best.e${n}`,
-  skip: (n: number) => `skip.e${n}`,
-  shown: (n: number) => `shown.e${n}`,
-  last: 'last',
+  best: (n: number, pack: Pack = 'e') => `best.${pack}${n}`,
+  skip: (n: number, pack: Pack = 'e') => `skip.${pack}${n}`,
+  shown: (n: number, pack: Pack = 'e') => `shown.${pack}${n}`,
+  last: (pack: Pack = 'e') => (pack === 'e' ? 'last' : `last.${pack}`),
 } as const;
 
 function read(store: Store, key: string): unknown {
@@ -84,20 +90,26 @@ export function saveSetting<K extends keyof Settings>(store: Store, key: K, valu
   write(store, key, value);
 }
 
-/** Fortschritt über dem Speicher für lib/games/sokoban/progress.ts */
-export function progressKV(store: Store): ProgressKV {
+/**
+ * Fortschritt eines Pakets über dem Speicher für lib/games/sokoban/progress.ts; `open` sagt, ob der Tag eines Felds
+ * gekommen ist (Adventskalender der Level)
+ */
+export function progressKV(store: Store, pack: Pack = 'e', open?: (n: number) => boolean): ProgressKV {
+  const lastRe = new RegExp(`^${pack}([1-9]\\d*)$`);
   return {
     best: (n) => {
-      const v = read(store, KEYS.best(n));
+      const v = read(store, KEYS.best(n, pack));
       return isBest(v) ? { moves: v.moves, pushes: v.pushes } : null;
     },
-    flag: (kind: Flag, n) => read(store, KEYS[kind](n)) === true,
+    flag: (kind: Flag, n) => read(store, KEYS[kind](n, pack)) === true,
     last: () => {
-      const v = read(store, KEYS.last);
-      return typeof v === 'string' && /^e[1-9]\d*$/.test(v) ? v : null;
+      const v = read(store, KEYS.last(pack));
+      const m = typeof v === 'string' ? lastRe.exec(v) : null;
+      return m ? Number(m[1]) : null;
     },
-    setBest: (n, best) => write(store, KEYS.best(n), { moves: best.moves, pushes: best.pushes }),
-    setFlag: (kind, n) => write(store, KEYS[kind](n), true),
-    setLast: (ref) => write(store, KEYS.last, ref),
+    setBest: (n, best) => write(store, KEYS.best(n, pack), { moves: best.moves, pushes: best.pushes }),
+    setFlag: (kind, n) => write(store, KEYS[kind](n, pack), true),
+    setLast: (n) => write(store, KEYS.last(pack), `${pack}${n}`),
+    ...(open ? { open } : {}),
   };
 }

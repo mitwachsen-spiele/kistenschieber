@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHAPTERS, LEVEL_LEDE, TEASER, chapterName, chapterRange, teaserLine } from './teaser';
+import { CHAPTERS, LEVEL_LEDE, TEASER, chapterName, chapterRange, playable, remaining, teaserLine } from './teaser';
 
 describe('Ausblick auf die Level', () => {
   it('nur die Kapitel 1 und 2, wörtlich aus dem Entwurf', () => {
@@ -17,9 +17,22 @@ describe('Ausblick auf die Level', () => {
     expect(next - 1).toBe(24);
   });
 
-  it('Überschrift „Level“ mit „kommen bald“ und der Notiz, dass sie noch nicht spielbar sind', () => {
-    expect(TEASER).toEqual({ title: 'Level', pill: 'kommen bald', note: 'Noch nicht spielbar.' });
-    expect(LEVEL_LEDE).toBe('Spielbar ist bisher nur die Einführung, die Level kommen bald.');
+  it('Ausblick „Weitere Level“ mit „kommen bald“ und der Notiz, dass sie noch nicht spielbar sind', () => {
+    expect(TEASER).toEqual({ title: 'Weitere Level', pill: 'kommen bald', note: 'Noch nicht spielbar.' });
+    expect(LEVEL_LEDE).toBe(
+      'Die Level gehen wie ein Adventskalender auf: Level 1 am 1. Dezember, dann jeden Tag eins mehr.',
+    );
+  });
+
+  it('bei 6 spielbaren Leveln: Kapitel 1 bis Level 6, danach Level 7 bis 12 und Kapitel 2', () => {
+    expect(playable(CHAPTERS, 6).map(chapterRange)).toEqual(['Level 1 bis 6, 2 bis 3 Kisten']);
+    expect(remaining(CHAPTERS, 6).map(chapterRange)).toEqual([
+      'Level 7 bis 12, 2 bis 3 Kisten',
+      'Level 13 bis 24, 3 bis 4 Kisten',
+    ]);
+    expect(remaining(CHAPTERS, 12).map(chapterName)).toEqual(['Kapitel 2: Im Speicher']);
+    expect(playable(CHAPTERS, 0)).toEqual([]);
+    expect(remaining(CHAPTERS, 24)).toEqual([]);
   });
 
   it('Kurzfassung für den Startbildschirm: Kapitel und Spanne aller Level; ohne Kapitel leer', () => {

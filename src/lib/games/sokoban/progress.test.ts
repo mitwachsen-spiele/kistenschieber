@@ -4,6 +4,7 @@ import {
   type Flag,
   type ProgressKV,
   cardState,
+  dayCome,
   doneCount,
   firstPlayable,
   introComplete,
@@ -11,8 +12,8 @@ import {
   markOpened,
   markShown,
   markSkipped,
+  nextOpen,
   recordWin,
-  refOf,
   skippedCount,
   startPoint,
   started,
@@ -29,12 +30,58 @@ function memoryKV(): ProgressKV & { readonly data: Map<string, unknown> } {
     data,
     best: (n) => (data.get(`best.e${n}`) as Best | undefined) ?? null,
     flag: (kind: Flag, n) => data.get(`${kind}.e${n}`) === true,
-    last: () => (data.get('last') as string | undefined) ?? null,
+    last: () => (data.get('last') as number | undefined) ?? null,
     setBest: (n, best) => void data.set(`best.e${n}`, best),
     setFlag: (kind, n) => void data.set(`${kind}.e${n}`, true),
-    setLast: (ref) => void data.set('last', ref),
+    setLast: (n) => void data.set('last', n),
   };
 }
+
+/** Level mit Kalender: offen sind die ersten `days` */
+function calendarKV(days: number) {
+  const kv = memoryKV();
+  return Object.assign(kv, { open: (n: number) => n <= days });
+}
+
+describe('Kalender (Level)', () => {
+  it('vor dem ersten Tag ist nichts frei, auch nicht Nummer 1', () => {
+    const kv = calendarKV(0);
+    expect(unlocked(kv, 1)).toBe(false);
+    expect(nextOpen(kv, 6)).toBe(0);
+    expect(firstPlayable(kv, 6)).toBe(1);
+    expect(markOpened(kv, 1)).toBe(false);
+    expect(cardState(kv, 1)).toBe('locked');
+    expect(started(kv, 6)).toBe(false);
+  });
+
+  it('frei ist nur, wessen Tag gekommen ist und dessen Vorgänger nicht mehr offen ist', () => {
+    const kv = calendarKV(3);
+    expect([1, 2, 3, 4].map((n) => unlocked(kv, n))).toEqual([true, false, false, false]);
+    kv.setBest(1, { moves: 25, pushes: 10 });
+    kv.setFlag('skip', 2);
+    expect([1, 2, 3, 4].map((n) => unlocked(kv, n))).toEqual([true, true, true, false]);
+    kv.setBest(3, { moves: 47, pushes: 14 });
+    // Level 4 hat seinen Tag noch nicht, obwohl 3 geschafft ist
+    expect(unlocked(kv, 4)).toBe(false);
+    expect(dayCome(kv, 4)).toBe(false);
+    expect(dayCome(kv, 3)).toBe(true);
+  });
+
+  it('nextOpen: erstes freies offenes, sonst 0; firstPlayable dann das letzte freie', () => {
+    const kv = calendarKV(2);
+    expect(nextOpen(kv, 6)).toBe(1);
+    kv.setBest(1, { moves: 25, pushes: 10 });
+    expect(nextOpen(kv, 6)).toBe(2);
+    kv.setBest(2, { moves: 27, pushes: 11 });
+    expect(nextOpen(kv, 6)).toBe(0);
+    expect(firstPlayable(kv, 6)).toBe(2);
+    expect(lastRef(kv, 6)).toBe(2);
+  });
+
+  it('ohne Kalender ist jeder Tag gekommen', () => {
+    expect(dayCome(memoryKV(), 99)).toBe(true);
+  });
+});
 
 describe('stateOf', () => {
   it('geschafft vor gesehen vor übersprungen vor offen', () => {
@@ -82,17 +129,15 @@ describe('Wo es weitergeht', () => {
     const kv = memoryKV();
     kv.setBest(1, { moves: 9, pushes: 4 });
     kv.setBest(2, { moves: 6, pushes: 4 });
-    kv.setLast(refOf(1));
+    kv.setLast(1);
     expect(lastRef(kv, COUNT)).toBe(1);
   });
 
   it.each([
     ['fehlt', null],
-    ['ungültig', 'x3'],
-    ['Level statt Lektion', 'l3'],
-    ['zu groß', 'e16'],
-    ['null', 'e0'],
-    ['gesperrt', 'e9'],
+    ['zu groß', 16],
+    ['null', 0],
+    ['gesperrt', 9],
   ])('lastRef fällt auf die erste freie offene Lektion zurück: last %s', (_, last) => {
     const kv = memoryKV();
     kv.setBest(1, { moves: 9, pushes: 4 });
@@ -105,7 +150,7 @@ describe('Wo es weitergeht', () => {
     expect(markOpened(kv, 9)).toBe(false);
     expect(kv.last()).toBeNull();
     expect(markOpened(kv, 1)).toBe(true);
-    expect(kv.last()).toBe('e1');
+    expect(kv.last()).toBe(1);
   });
 
   it('doneCount zählt nur Bestwerte', () => {
@@ -157,7 +202,7 @@ describe('Startbildschirm', () => {
   it('started: ohne Fortschritt und ohne letzte Lektion (oder mit e1) noch nicht angefangen', () => {
     const kv = memoryKV();
     expect(started(kv, COUNT)).toBe(false);
-    kv.setLast('e1');
+    kv.setLast(1);
     expect(started(kv, COUNT)).toBe(false);
   });
 
@@ -172,7 +217,7 @@ describe('Startbildschirm', () => {
 
   it('started: eine gesperrte letzte Lektion zählt nicht', () => {
     const kv = memoryKV();
-    kv.setLast('e5');
+    kv.setLast(5);
     expect(started(kv, COUNT)).toBe(false);
   });
 
@@ -183,7 +228,7 @@ describe('Startbildschirm', () => {
     const kv = memoryKV();
     expect(startPoint(kv, COUNT)).toEqual({ n: 1, repeat: false });
     solve(kv, 1, 2);
-    kv.setLast('e2');
+    kv.setLast(2);
     expect(startPoint(kv, COUNT)).toEqual({ n: 2, repeat: false });
     kv.setFlag('skip', 3);
     expect(startPoint(kv, COUNT)).toEqual({ n: lastRef(kv, COUNT), repeat: false });
@@ -193,11 +238,11 @@ describe('Startbildschirm', () => {
     const kv = memoryKV();
     solve(kv, ...range(1, 15).filter((n) => n !== 7));
     kv.setFlag('skip', 7);
-    kv.setLast('e15');
+    kv.setLast(15);
     expect(startPoint(kv, COUNT)).toEqual({ n: 7, repeat: false });
     const all = memoryKV();
     for (let n = 1; n <= COUNT; n++) all.setFlag('skip', n);
-    all.setLast('e15');
+    all.setLast(15);
     expect(startPoint(all, COUNT)).toEqual({ n: 1, repeat: false });
   });
 
@@ -206,7 +251,7 @@ describe('Startbildschirm', () => {
     solve(kv, ...range(1, 15).filter((n) => n !== 3 && n !== 9));
     kv.setFlag('skip', 3);
     kv.setFlag('skip', 9);
-    kv.setLast('e9');
+    kv.setLast(9);
     expect(startPoint(kv, COUNT)).toEqual({ n: 3, repeat: false });
     solve(kv, 3);
     expect(startPoint(kv, COUNT)).toEqual({ n: 9, repeat: false });
@@ -217,11 +262,11 @@ describe('Startbildschirm', () => {
     solve(kv, ...range(1, 14));
     kv.setFlag('shown', 15);
     expect(startPoint(kv, COUNT)).toEqual({ n: 1, repeat: true });
-    kv.setLast('e15');
+    kv.setLast(15);
     expect(startPoint(kv, COUNT)).toEqual({ n: 1, repeat: true });
-    kv.setLast('e6');
+    kv.setLast(6);
     expect(startPoint(kv, COUNT)).toEqual({ n: 6, repeat: false });
-    kv.setLast('e1');
+    kv.setLast(1);
     expect(startPoint(kv, COUNT)).toEqual({ n: 1, repeat: false });
   });
 
