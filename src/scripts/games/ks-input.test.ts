@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { type KeyInfo, keepsKey, keyAction } from './ks-input';
+import { makeCamera, screenDirs } from '../../lib/games/oblique/camera';
+import type { Picked } from '../../lib/games/oblique/geometry';
+import { DIRS, parseLevel } from '../../lib/games/sokoban/level';
+import { type Game, busy, key, newGame, showSolution, tick, tip } from '../../lib/games/sokoban/state';
+import { type KeyInfo, SWIPE_PX, keepsKey, keyAction, padAngles, swipeDir, tapAt } from './ks-input';
 
 const k = (key: string, more: Partial<KeyInfo> = {}): KeyInfo => ({
   key,
@@ -71,5 +75,127 @@ describe('keepsKey', () => {
     expect(keepsKey({ kind: 'undo' })).toBe(true);
     expect(keepsKey({ kind: 'escape' })).toBe(true);
     for (const kind of ['restart', 'tip', 'menu', 'next', 'other'] as const) expect(keepsKey({ kind })).toBe(false);
+  });
+});
+
+describe('Wischen', () => {
+  const flat = screenDirs(makeCamera(0, 90));
+  it('bis 28 px ist es ein Tippen', () => {
+    expect(SWIPE_PX).toBe(28);
+    expect(swipeDir(28, 0, flat)).toBeNull();
+    expect(swipeDir(0, -20, flat)).toBeNull();
+    expect(swipeDir(25, 15, flat)).toBe('right'); // 29,2 px
+  });
+
+  it('von oben gesehen: die Bildschirmrichtung ist die Gitterrichtung', () => {
+    expect(swipeDir(60, 0, flat)).toBe('right');
+    expect(swipeDir(-60, 5, flat)).toBe('left');
+    expect(swipeDir(3, -60, flat)).toBe('up');
+    expect(swipeDir(0, 60, flat)).toBe('down');
+  });
+
+  it('schräg: die Gitterrichtung, deren Bildschirmrichtung am besten passt', () => {
+    const dirs = screenDirs(makeCamera(45, 20));
+    for (const s of dirs) expect(swipeDir(s.x * 60, s.y * 60, dirs)).toBe(s.name);
+  });
+
+  it('ohne Richtungen kein Schritt', () => {
+    expect(swipeDir(60, 0, [])).toBeNull();
+  });
+});
+
+describe('Steuerkreuz', () => {
+  it('von oben gesehen zeigen die Pfeile hoch, rechts, runter, links', () => {
+    expect(padAngles(screenDirs(makeCamera(0, 90)))).toEqual({ up: 0, right: 90, down: 180, left: 270 });
+  });
+
+  it('gedreht auf die Bildschirmrichtung der Kamera (atan2 + 90°, eine Nachkommastelle)', () => {
+    const dirs = screenDirs(makeCamera(20, 50));
+    const a = padAngles(dirs);
+    for (const s of dirs) {
+      const want = (Math.atan2(s.y, s.x) * 180) / Math.PI + 90;
+      expect(a[s.name]).toBeCloseTo(want, 1);
+    }
+    expect(a.up).not.toBe(0);
+  });
+
+  it('ohne Richtungen die Grundstellung', () => {
+    expect(padAngles([])).toEqual({ up: 0, down: 180, left: -90, right: 90 });
+  });
+});
+
+describe('Antippen (tapAt)', () => {
+  /** Lektion 1 und 4 als Felder (Daten liegen in data/games; hier reicht das Feld) */
+  const L1 = parseLevel('#########\n#       #\n# ##### #\n#.   $  #\n# ##### #\n#    @  #\n#########');
+  const L4 = parseLevel('########\n#      #\n#  $   #\n#  @   #\n#     .#\n########');
+  let t = 0;
+  const settle = (g: Game): Game => {
+    let s = g;
+    for (let i = 0; i < 500 && busy(s); i++) s = tick(s, (t += 1000));
+    return s;
+  };
+  const at = (L: typeof L1, r: number, c: number) => r * L.W + c;
+  const floor = (r: number, c: number) => ({ type: 'floor', r, c }) as const;
+  const crate = (id: number): Picked => ({ type: 'crate', id, k: 0, poly: [] });
+
+  it('auf ein erreichbares Bodenfeld: die Figur läuft hin, als eine Aktion (ein Schnappschuss)', () => {
+    const g = settle(tapAt(newGame(L1), floor(5, 1), (t += 1)));
+    expect(g).toMatchObject({ p: at(L1, 5, 1), moves: 4, pushes: 0 });
+    expect(g.hist).toHaveLength(1);
+  });
+
+  it('auf die Figur: nichts zu laufen, die Auswahl geht weg', () => {
+    const sel = tapAt(newGame(L1), crate(0), 0);
+    expect(sel.sel).toBe(0);
+    const g = tapAt(sel, { type: 'fig', k: 0, poly: [] }, 0);
+    expect(g).toMatchObject({ sel: null, moves: 0 });
+  });
+
+  it('Kiste antippen wählt sie, noch einmal hebt die Wahl auf', () => {
+    const g = tapAt(newGame(L1), crate(0), 0);
+    expect(g.sel).toBe(0);
+    expect(tapAt(g, crate(0), 0).sel).toBeNull();
+  });
+
+  it('ein Pfeilfeld der gewählten Kiste: hinlaufen und schieben', () => {
+    const g = settle(tapAt(tapAt(newGame(L1), crate(0), 0), floor(3, 4), (t += 1)));
+    expect(g).toMatchObject({ boxes: [at(L1, 3, 4)], p: at(L1, 3, 5), moves: 6, pushes: 1 });
+    expect(g.hist).toHaveLength(1);
+  });
+
+  it('Kiste ohne Möglichkeit: Meldung „noOptions“', () => {
+    // Lektion 4: Kiste in die Ecke (ruLL, dlU)
+    let g = newGame(L4);
+    for (const ch of 'rulldlu')
+      g = settle(key(g, DIRS[({ r: 'right', u: 'up', l: 'left', d: 'down' } as const)[ch as 'r']], (t += 1)));
+    expect(g.boxes).toEqual([at(L4, 1, 1)]);
+    expect(tapAt(g, crate(0), 0)).toMatchObject({ sel: 0, msg: 'noOptions' });
+  });
+
+  it('unerreichbar oder daneben: Auswahl und Tipp weg; ohne Auswahl bleibt alles, wie es ist', () => {
+    const hinted = tip(newGame(L1));
+    expect(hinted.sel).toBe(0);
+    expect(tapAt(hinted, null, 0)).toMatchObject({ sel: null, hint: null });
+    expect(tapAt(hinted, floor(0, 0), 0)).toMatchObject({ sel: null, hint: null, moves: 0 });
+    const plain = newGame(L1);
+    expect(tapAt(plain, null, 0)).toBe(plain);
+  });
+
+  it('ein anderes Feld bei gewählter Kiste ist kein Pfeil: dorthin laufen', () => {
+    const g = settle(tapAt(tapAt(newGame(L1), crate(0), 0), floor(5, 7), (t += 1)));
+    expect(g).toMatchObject({ p: at(L1, 5, 7), moves: 2, sel: null });
+  });
+
+  it('während einer Animation und nach dem Sieg nichts; beim Vorspielen nur abbrechen', () => {
+    const moving = tapAt(newGame(L1), floor(5, 1), (t += 1));
+    expect(moving.a).not.toBeNull();
+    expect(tapAt(moving, floor(5, 7), t)).toBe(moving);
+    const auto = showSolution(newGame(L1), (t += 1));
+    expect(auto.auto).toBe(true);
+    const stopped = tapAt(auto, floor(5, 1), t);
+    expect(stopped).toMatchObject({ auto: false, q: [], msg: 'intro' });
+    const won = settle(showSolution(newGame(L1), (t += 1)));
+    expect(won.won).toBe(true);
+    expect(tapAt(won, floor(5, 1), t)).toBe(won);
   });
 });

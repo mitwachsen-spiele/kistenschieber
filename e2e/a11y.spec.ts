@@ -73,6 +73,23 @@ for (const colorScheme of ['light', 'dark'] as const)
       expect(await violations(page)).toEqual([]);
     });
 
+    test('Barrierefrei: Spielfeld mit Steuerkreuz und offenem Menü', async ({ page }) => {
+      await openGame(page, { hash: '#lektion-1' });
+      await page.evaluate(() => document.documentElement.classList.add('touch'));
+      await expect(page.getByRole('group', { name: 'Laufen' })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+      await page.getByRole('button', { name: 'Menü' }).click();
+      await expect(page.getByRole('dialog', { name: 'Lektion 1: Erster Schubs' })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+    });
+
+    test('Barrierefrei: Spielfeld mit Tipp', async ({ page }) => {
+      await openGame(page, { hash: '#lektion-2', store: { 'skip.e1': true } });
+      await page.getByRole('button', { name: 'Tipp' }).click();
+      await expect(page.locator('[data-ks="sign"]')).toContainText('Tipp:');
+      expect(await violations(page)).toEqual([]);
+    });
+
     test('Barrierefrei: gesperrte Lektion', async ({ page }) => {
       await openGame(page, { hash: '#lektion-5' });
       await expect(page.getByRole('heading', { level: 2, name: 'Diese Lektion ist noch zu' })).toBeVisible();

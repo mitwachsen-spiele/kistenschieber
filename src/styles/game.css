@@ -467,7 +467,8 @@ a.btn:hover {
   justify-self: start;
 }
 /* Handwahl nur, wenn Touch benutzt wird (scripts/games/ks-touch.ts) */
-html:not(.touch) .touch-only {
+html:not(.touch) .touch-only,
+html:not(.touch) .pad {
   display: none !important;
 }
 /* Schon installiert: keine Anleitung zum Installieren */
@@ -662,12 +663,106 @@ body.playing {
     min-height: 48px;
     padding: 6px 12px;
   }
-  .btn.gbtn {
-    min-height: 44px;
+  .pad {
+    grid-template-columns: repeat(3, 48px);
+    grid-template-rows: repeat(3, 48px);
+    gap: 4px;
   }
 }
 @container (max-width: 380px) {
   .gacts .btn {
     min-width: 92px;
   }
+  .pad {
+    grid-template-columns: repeat(3, 54px);
+    grid-template-rows: repeat(3, 54px);
+  }
+}
+
+/* Steuerkreuz (nur mit Touch, siehe oben): Pfeile nach der Kamera gedreht (ks-game.ts), die Mitte ist eine Kiste.
+   Gedrückt gold wie jede Aktion */
+.pad {
+  display: grid;
+  grid-template-columns: repeat(3, 58px);
+  grid-template-rows: repeat(3, 58px);
+  gap: 6px;
+  transition: transform 0.25s;
+}
+.pad button {
+  border: 0;
+  background: var(--paper);
+  box-shadow: var(--ks-px);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--ink);
+  padding: 0;
+}
+.pad button:active {
+  transform: translateY(2px);
+  background: var(--gold);
+}
+.pad svg {
+  width: 30px;
+  height: 30px;
+  fill: currentColor;
+}
+.pad .u {
+  grid-area: 1 / 2;
+}
+.pad .l {
+  grid-area: 2 / 1;
+}
+.pad .r {
+  grid-area: 2 / 3;
+}
+.pad .d {
+  grid-area: 3 / 2;
+}
+.pad .l svg {
+  transform: rotate(-90deg);
+}
+.pad .r svg {
+  transform: rotate(90deg);
+}
+.pad .d svg {
+  transform: rotate(180deg);
+}
+.pad .mid {
+  grid-area: 2 / 2;
+  background: var(--crate);
+  box-shadow: inset 0 0 0 4px var(--crate-dark);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pad {
+    transition: none;
+  }
+}
+
+/* Menü im Spiel: modaler Dialog (ks-game.ts), Einträge volle Breite */
+.ks dialog.menu {
+  border: 0;
+  padding: 20px;
+  background: var(--wood);
+  color: var(--text);
+  box-shadow: var(--ks-px);
+  width: min(380px, 92vw);
+  max-height: 92vh;
+}
+.ks dialog.menu[open] {
+  display: grid;
+  gap: 10px;
+}
+.ks dialog.menu::backdrop {
+  background: rgb(29 40 56 / 50%);
+}
+.ks dialog.menu h2 {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+}
+.ks dialog.menu .btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
 }

@@ -64,6 +64,22 @@ export const GAME_BUTTONS = {
   tip: 'Tipp',
 } as const;
 
+/** Menü im Spiel (Dialog): Einträge in der Reihenfolge des Entwurfs und die Notiz darunter */
+export const MENU = {
+  resume: 'Weiterspielen',
+  restart: 'Neu starten',
+  tip: 'Tipp',
+  solution: 'Lösung zeigen',
+  skip: 'Lektion überspringen',
+  level: 'Level wählen',
+  settings: 'Einstellungen',
+  start: 'Startbildschirm',
+  note: 'Überspringen und „Lösung zeigen“ machen die nächste Lektion frei. Zurückkommen geht jederzeit über „Level wählen“.',
+} as const;
+
+/** Steuerkreuz: Name der Gruppe und der vier Knöpfe */
+export const PAD = { group: 'Laufen', up: 'Hoch', left: 'Links', right: 'Rechts', down: 'Runter' } as const;
+
 /** Zeile unter dem Titel des Startbildschirms; nach der Einführung kommen die Level erst noch */
 export const startStatus = (done: number, count: number, introDone: boolean): string =>
   introDone ? 'Einführung geschafft. Die Level kommen bald.' : `Einführung: ${done} von ${count} Lektionen geschafft`;

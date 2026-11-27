@@ -6,15 +6,16 @@
 // Test-Uhr: Mit `window.__KS_TEST` zeichnet die Komponente sofort statt im nächsten Bild; Tests rufen `frame` selbst
 // (auch für jeden Takt einer Animation: ohne Test-Uhr läuft der Takt per requestAnimationFrame, solange etwas läuft).
 // Klasse `playing` (an der Komponente und an body) nur, solange eine freie Lektion gespielt wird: Spielfeld im ganzen
-// Bildschirm, ohne Scrollen.
+// Bildschirm, ohne Scrollen, Bildschirm bleibt an (Wake Lock). Ein Bildschirmwechsel schließt das Menü im Spiel.
 import { type Camera, clampCamera, makeCamera } from '../../lib/games/oblique/camera';
 import { browserStore } from './browser-store';
 import { loadSettings, progressKV, saveSetting, type Settings, type Store } from './ks-save';
 import { unlocked } from '../../lib/games/sokoban/progress';
 import { route, type Route } from './ks-router';
 import { COUNT, type Host, LevelScreen, LockedScreen, SettingsScreen, StartScreen } from './ks-screens';
-import { GameScreen } from './ks-game';
+import { GameScreen, type Spot } from './ks-game';
 import { watchTouch } from './ks-touch';
+import { type ScreenLock, watchWakeLock } from './wake-lock';
 
 /** Welcher Abschnitt zeigt den Bildschirm: eine freie Lektion das Spielfeld, eine gesperrte, warum sie zu ist */
 type Section = 'start' | 'level' | 'einstellungen' | 'gesperrt' | 'spiel';
@@ -31,6 +32,7 @@ class KsKistenschieber extends HTMLElement {
   private levels!: LevelScreen;
   private locked!: LockedScreen;
   private play!: GameScreen;
+  private wake!: ScreenLock;
   private kv!: Host['kv'];
   private shown: Section = 'start';
   private queued = false;
@@ -44,6 +46,7 @@ class KsKistenschieber extends HTMLElement {
     this.settings = loadSettings(this.store);
     this.cam = this.makeCam();
     watchTouch(signal);
+    this.wake = watchWakeLock(signal);
     this.kv = progressKV(this.store);
     const host: Host = {
       kv: this.kv,
@@ -118,7 +121,9 @@ class KsKistenschieber extends HTMLElement {
     if (r.replace !== null) history.replaceState(history.state, '', r.replace || location.pathname + location.search);
     this.classList.remove('settled');
     const id = this.sectionFor(r);
+    if (this.shown === 'spiel') this.play.leave();
     this.shown = id;
+    this.wake.show(id);
     for (const s of this.querySelectorAll<HTMLElement>(':scope > section')) s.hidden = s.id !== id;
     const playing = id === 'spiel';
     this.classList.toggle('playing', playing);
@@ -136,6 +141,11 @@ class KsKistenschieber extends HTMLElement {
       else this.section(id).querySelector<HTMLElement>('h1, h2')?.focus({ preventScroll: true });
     }
     this.request();
+  }
+
+  /** Für die Browser-Tests: wohin tippen, um ein Bodenfeld oder eine Kiste des Spielfelds zu treffen */
+  spot(s: Spot) {
+    return this.shown === 'spiel' ? this.play.spot(s) : null;
   }
 
   /** Neu zeichnen: im nächsten Bild, mit Test-Uhr sofort */

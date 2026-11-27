@@ -9,6 +9,8 @@ import {
   lockedWhy,
   thumbLabel,
   GAME_BUTTONS,
+  MENU,
+  PAD,
   SIGN,
   cardTag,
   continueText,
@@ -143,5 +145,25 @@ describe('Levelwahl', () => {
     expect(LOCKED.note).toBe('Alles wird der Reihe nach frei.');
     expect(lockedWhy(lesson(2))).toBe('Schaff zuerst Lektion 2: Um die Ecke oder überspring es; dann geht es weiter.');
     expect(lockedGo(2)).toBe('Zu Lektion 2');
+  });
+});
+
+describe('Menü und Steuerkreuz', () => {
+  it('Menü-Einträge und Notiz wörtlich aus dem Entwurf, in seiner Reihenfolge', () => {
+    expect(Object.values(MENU)).toEqual([
+      'Weiterspielen',
+      'Neu starten',
+      'Tipp',
+      'Lösung zeigen',
+      'Lektion überspringen',
+      'Level wählen',
+      'Einstellungen',
+      'Startbildschirm',
+      'Überspringen und „Lösung zeigen“ machen die nächste Lektion frei. Zurückkommen geht jederzeit über „Level wählen“.',
+    ]);
+  });
+
+  it('Steuerkreuz: Gruppe „Laufen“, Knöpfe Hoch, Links, Rechts, Runter', () => {
+    expect(PAD).toEqual({ group: 'Laufen', up: 'Hoch', left: 'Links', right: 'Rechts', down: 'Runter' });
   });
 });

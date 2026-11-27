@@ -158,3 +158,67 @@ export const colourCount = (page: Page, selector: string, [r, g, b]: readonly [n
     },
     [r, g, b] as const,
   );
+
+/**
+ * Warten, bis der nachgeladene Teil (ks-menu: Konfetti) da ist. Das Spielfeld holt ihn beim
+ * Öffnen einer Lektion; wer Konfetti sehen will, wartet vorher darauf
+ */
+export const extras = (page: Page) =>
+  expect(page.locator('ks-kistenschieber > section#spiel')).toHaveClass(/\bextras\b/, { timeout: SETTLE_MS });
+
+/** Ein Bodenfeld (r, c) oder eine Kiste (Nummer) des Spielfelds */
+export type Spot = { r: number; c: number } | { crate: number };
+
+/** Wohin tippen (Seitenkoordinaten), um genau dieses Feld oder diese Kiste zu treffen (ks-game.ts `spot`) */
+export async function spot(page: Page, s: Spot) {
+  const p = await game(page).evaluate(
+    (node, target) => (node as unknown as { spot(t: unknown): { x: number; y: number } | null }).spot(target),
+    s,
+  );
+  if (!p) throw new Error(`kein Punkt für ${JSON.stringify(s)}`);
+  return p;
+}
+
+/**
+ * Wischen mit einem Finger (Touch-Ereignisse über CDP, daraus macht Chromium Pointer-Events mit pointerType touch):
+ * von (x, y) in Schritten um (dx, dy)
+ */
+export async function swipe(page: Page, x: number, y: number, dx: number, dy: number) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  for (let i = 1; i <= 4; i++)
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: x + (dx * i) / 4, y: y + (dy * i) / 4 }],
+    });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+}
+
+/**
+ * Wake Lock vortäuschen, vor dem ersten Skript der Seite (Headless-Chromium lehnt die echte Sperre ab): Jede Anfrage und
+ * jede Freigabe landet in `window.__wakeLog`
+ */
+export const fakeWakeLock = (page: Page) =>
+  page.addInitScript(() => {
+    const log: string[] = [];
+    (window as unknown as { __wakeLog: string[] }).__wakeLog = log;
+    Object.defineProperty(navigator, 'wakeLock', {
+      configurable: true,
+      value: {
+        request(type: string) {
+          log.push(`request ${type}`);
+          return Promise.resolve({
+            release() {
+              log.push('release');
+              return Promise.resolve();
+            },
+            addEventListener() {},
+          });
+        },
+      },
+    });
+  });
+
+/** Was die vorgetäuschte Wake-Lock-Sperre erlebt hat */
+export const wakeLog = (page: Page) => page.evaluate(() => (window as unknown as { __wakeLog: string[] }).__wakeLog);

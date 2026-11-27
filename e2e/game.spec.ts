@@ -3,8 +3,23 @@
 // zeichnet (`render`, `playLurd`); gewartet wird nur auf Zustände (Text, Klassen, Attribute).
 import { expect, test, type Page } from '@playwright/test';
 import { LESSONS } from '../src/data/games/lessons';
-import { CONFETTI_LIFE } from '../src/lib/games/sokoban/scene';
-import { colourCount, drawn, game, openGame, pixels, playLurd, render, stored, watchErrors } from './helpers';
+import { CONFETTI_LIFE } from '../src/lib/games/sokoban/confetti';
+import { SIGN } from '../src/data/games/texts';
+import { ARROW_FILL } from '../src/data/games/kaje';
+import {
+  colourCount,
+  drawn,
+  extras,
+  fakeWakeLock,
+  game,
+  openGame,
+  pixels,
+  playLurd,
+  render,
+  stored,
+  wakeLog,
+  watchErrors,
+} from './helpers';
 
 const FIELD = '#spiel canvas';
 /** Rand einer festsitzenden Kiste (#e0442f, data/games/kaje.ts) */
@@ -213,6 +228,7 @@ test.describe('Konfetti', () => {
 
   test('nach dem Sieg fliegt Konfetti, das von selbst verglüht', async ({ page }) => {
     await openGame(page, { hash: '#lektion-1' });
+    await extras(page);
     await playLurd(page, lesson(1).sol);
     await render(page, 8);
     const flying = await pixels(page, FIELD);
@@ -225,6 +241,7 @@ test.describe('Konfetti', () => {
 
   test('Zug zurück räumt das Konfetti sofort weg', async ({ page }) => {
     await openGame(page, { hash: '#lektion-1' });
+    await extras(page);
     await playLurd(page, lesson(1).sol);
     await render(page, 8);
     await press(page, 'z');
@@ -233,9 +250,31 @@ test.describe('Konfetti', () => {
     expect(afterUndo).toBe(await pixels(page, FIELD));
   });
 
+  test('Sieg, bevor der nachgeladene Teil da ist: das Konfetti kommt mit ihm', async ({ page }) => {
+    let release = () => {};
+    const held = new Promise<void>((r) => (release = r));
+    await page.route(/\/ks-menu\.[^/]*\.js$/, async (route) => {
+      await held;
+      await route.continue();
+    });
+    await openGame(page, { hash: '#lektion-1' });
+    await playLurd(page, lesson(1).sol);
+    await expect(sign(page)).toHaveText('Geschafft! 9 Züge, kürzer geht es nicht.');
+    await expect(spiel(page)).not.toHaveClass(/\bextras\b/);
+    await render(page, 8);
+    const before = await pixels(page, FIELD);
+    release();
+    await extras(page);
+    await render(page, 8);
+    expect(await pixels(page, FIELD)).not.toBe(before);
+    await settle(page);
+    expect(await pixels(page, FIELD)).toBe(before);
+  });
+
   test('bei reduzierter Bewegung kein Konfetti', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await openGame(page, { hash: '#lektion-1' });
+    await extras(page);
     await playLurd(page, lesson(1).sol);
     await expect(sign(page)).toHaveText('Geschafft! 9 Züge, kürzer geht es nicht.');
     await render(page, 8);
@@ -300,5 +339,260 @@ test.describe('Spielfeld im ganzen Bildschirm', () => {
     await expect
       .poll(() => page.locator(FIELD).evaluate((cv) => (cv as HTMLCanvasElement).style.width))
       .not.toBe(before);
+  });
+});
+
+test.describe('Menü', () => {
+  const dialog = (page: Page) => page.locator('#spiel dialog.menu');
+
+  test('M öffnet es: Titel, acht Einträge und die Notiz; Esc schließt; „Weiterspielen“ fokussiert das Feld', async ({
+    page,
+  }) => {
+    const errors = watchErrors(page);
+    await openGame(page, { hash: '#lektion-1' });
+    await page.keyboard.press('m');
+    const d = page.getByRole('dialog', { name: 'Lektion 1: Erster Schubs' });
+    await expect(d).toBeVisible();
+    await expect(d).toHaveAttribute('aria-labelledby', 'menu-title');
+    await expect(d.getByRole('heading', { level: 2 })).toHaveText('Lektion 1: Erster Schubs');
+    const entries = d.locator('button, a');
+    await expect(entries).toHaveText([
+      'Weiterspielen',
+      'Neu starten',
+      'Tipp',
+      'Lösung zeigen',
+      'Lektion überspringen',
+      'Level wählen',
+      'Einstellungen',
+      'Startbildschirm',
+    ]);
+    await expect(d.getByRole('link')).toHaveCount(3);
+    await expect(d.getByRole('link', { name: 'Level wählen' })).toHaveAttribute('href', '#level');
+    await expect(d.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute('href', '#einstellungen');
+    await expect(d.getByRole('link', { name: 'Startbildschirm' })).toHaveAttribute('href', '#start');
+    await expect(d.locator('p.note')).toHaveText(
+      'Überspringen und „Lösung zeigen“ machen die nächste Lektion frei. Zurückkommen geht jederzeit über „Level wählen“.',
+    );
+    await expect(d.getByRole('button', { name: 'Weiterspielen' })).toHaveClass(/\bprimary\b/);
+    await page.keyboard.press('Escape');
+    await expect(d).toBeHidden();
+    await page.getByRole('button', { name: 'Menü' }).click();
+    await expect(d).toBeVisible();
+    await d.getByRole('button', { name: 'Weiterspielen' }).click();
+    await expect(d).toBeHidden();
+    await expect(page.locator(FIELD)).toBeFocused();
+    expect(errors).toEqual([]);
+  });
+
+  test('Esc öffnet es, der Fokus bleibt darin gefangen, Tasten fürs Spiel zählen nicht', async ({ page }) => {
+    await openGame(page, { hash: '#lektion-1' });
+    await page.keyboard.press('Escape');
+    await expect(dialog(page)).toBeVisible();
+    for (let i = 0; i < 12; i++) {
+      await page.keyboard.press('Tab');
+      const outside = await page.evaluate(() => {
+        const a = document.activeElement;
+        return !!a && a !== document.body && !a.closest('dialog');
+      });
+      expect(outside).toBe(false);
+    }
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('z');
+    await render(page, 4);
+    await expect(count(page)).toHaveText('0 Züge');
+    await expect(dialog(page)).toBeVisible();
+  });
+
+  test('Esc hebt erst die Auswahl (Tipp) auf, das nächste Esc öffnet das Menü', async ({ page }) => {
+    await openGame(page, { hash: '#lektion-2', store: { 'skip.e1': true } });
+    const turquoise = [0x2e, 0xc4, 0xb6] as const;
+    await page.keyboard.press('h');
+    await render(page);
+    expect(await colourCount(page, FIELD, turquoise)).toBeGreaterThan(50);
+    await page.keyboard.press('Escape');
+    await render(page);
+    expect(await colourCount(page, FIELD, turquoise)).toBe(0);
+    await expect(dialog(page)).toBeHidden();
+    await page.keyboard.press('Escape');
+    await expect(dialog(page)).toBeVisible();
+  });
+
+  test('ein Bildschirmwechsel schließt das Menü; „Level wählen“ führt zur Levelwahl', async ({ page }) => {
+    await openGame(page, { hash: '#lektion-1' });
+    await page.keyboard.press('m');
+    await expect(dialog(page)).toBeVisible();
+    await page.evaluate(() => (location.hash = '#start'));
+    await expect(page.getByRole('heading', { level: 1, name: 'Kistenschieber' })).toBeVisible();
+    await expect(dialog(page)).toBeHidden();
+    await page.evaluate(() => (location.hash = '#lektion-1'));
+    await page.keyboard.press('m');
+    await dialog(page).getByRole('link', { name: 'Level wählen' }).click();
+    await expect(page).toHaveURL(/#level$/);
+    await expect(dialog(page)).toBeHidden();
+  });
+
+  test('„Neu starten“ im Menü startet neu (zurücknehmbar)', async ({ page }) => {
+    await openGame(page, { hash: '#lektion-1' });
+    await press(page, 'ArrowLeft');
+    await page.keyboard.press('m');
+    await dialog(page).getByRole('button', { name: 'Neu starten' }).click();
+    await render(page);
+    await expect(count(page)).toHaveText('0 Züge');
+    await expect(sign(page)).toHaveText(SIGN.restarted);
+  });
+});
+
+test.describe('Tipp und Lösung', () => {
+  const turquoise = [0x2e, 0xc4, 0xb6] as const;
+
+  test('Tipp am Start von Lektion 2: Kiste gewählt, türkiser Pfeil, Tipp-Text', async ({ page }) => {
+    await openGame(page, { hash: '#lektion-2', store: { 'skip.e1': true } });
+    expect(await colourCount(page, FIELD, turquoise)).toBe(0);
+    await spiel(page).getByRole('button', { name: 'Tipp' }).click();
+    await render(page);
+    await expect(sign(page)).toHaveText(SIGN.tip);
+    // türkiser Pfeil (Tipp) und goldener Rand der gewählten Kiste
+    expect(await colourCount(page, FIELD, turquoise)).toBeGreaterThan(50);
+    expect(await colourCount(page, FIELD, [0xf0, 0xa5, 0x31])).toBeGreaterThan(20);
+    expect(ARROW_FILL.hint).toBe('#2ec4b6');
+  });
+
+  test('Tipp aus der Sackgasse (H): „Von hier aus geht es nicht mehr. …“ als Warnung', async ({ page }) => {
+    await openGame(page, { hash: '#lektion-4', store: upTo(4) });
+    await playLurd(page, 'ruLLdlU');
+    await page.keyboard.press('h');
+    await expect(sign(page)).toHaveText(SIGN.tipDead);
+    await expect(sign(page)).toHaveClass('sign warn');
+  });
+
+  test('„Lösung zeigen“ merkt shown.e2 sofort und spielt bis „So geht es. Jetzt du? …“, ohne Bestwert', async ({
+    page,
+  }) => {
+    await openGame(page, { hash: '#lektion-2', store: { 'skip.e1': true } });
+    await page.keyboard.press('m');
+    await spiel(page).getByRole('button', { name: 'Lösung zeigen' }).click();
+    expect(await stored(page, 'shown.e2')).toBe('true');
+    await expect(sign(page)).toHaveText(SIGN.showing);
+    await render(page, 60);
+    await expect(sign(page)).toHaveText(SIGN.shownWin);
+    await expect(sign(page)).toHaveClass('sign win');
+    await expect(count(page)).toHaveText(`${lesson(2).moves} Züge`);
+    expect(await stored(page, 'best.e2')).toBeNull();
+    await expect(spiel(page).getByRole('button', { name: 'Nochmal' })).toBeVisible();
+  });
+
+  test('ein Tastendruck beendet das Vorspielen', async ({ page }) => {
+    await openGame(page, { hash: '#lektion-2', store: { 'skip.e1': true } });
+    await page.keyboard.press('m');
+    await spiel(page).getByRole('button', { name: 'Lösung zeigen' }).click();
+    await render(page, 4);
+    await page.keyboard.press('x');
+    await expect(sign(page)).toHaveText(lesson(2).intro);
+    const moves = await count(page).textContent();
+    await render(page, 40);
+    await expect(count(page)).toHaveText(moves!);
+    await expect(sign(page)).toHaveText(lesson(2).intro);
+  });
+
+  test('das Menü zu öffnen beendet das Vorspielen', async ({ page }) => {
+    await openGame(page, { hash: '#lektion-2', store: { 'skip.e1': true } });
+    await page.keyboard.press('m');
+    await spiel(page).getByRole('button', { name: 'Lösung zeigen' }).click();
+    await render(page, 4);
+    await page.keyboard.press('m');
+    await expect(page.locator('#spiel dialog.menu')).toBeVisible();
+    await expect(sign(page)).toHaveText(lesson(2).intro);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#spiel dialog.menu')).toBeHidden();
+    const moves = await count(page).textContent();
+    await render(page, 40);
+    await expect(count(page)).toHaveText(moves!);
+  });
+});
+
+test.describe('Lektion überspringen', () => {
+  const skipVia = async (page: Page) => {
+    await page.keyboard.press('m');
+    await spiel(page).getByRole('button', { name: 'Lektion überspringen' }).click();
+  };
+
+  test('Lektion 3: merkt skip.e3 und öffnet Lektion 4', async ({ page }) => {
+    await openGame(page, { hash: '#lektion-3', store: upTo(3) });
+    await skipVia(page);
+    await expect(page).toHaveURL(/#lektion-4$/);
+    expect(await stored(page, 'skip.e3')).toBe('true');
+    await expect(spiel(page).getByRole('heading', { level: 2, name: 'Lektion 4: Ecken sind Fallen' })).toBeVisible();
+  });
+
+  test('mit Bestwert in Lektion 3 kein skip.e3', async ({ page }) => {
+    await openGame(page, { hash: '#lektion-3', store: { ...upTo(3), 'best.e3': { moves: 14, pushes: 6 } } });
+    await skipVia(page);
+    await expect(page).toHaveURL(/#lektion-4$/);
+    expect(await stored(page, 'skip.e3')).toBeNull();
+  });
+
+  test('Lektion 15 führt zur Levelwahl', async ({ page }) => {
+    await openGame(page, { hash: '#lektion-15', store: upTo(15) });
+    await skipVia(page);
+    await expect(page).toHaveURL(/#level$/);
+    expect(await stored(page, 'skip.e15')).toBe('true');
+  });
+});
+
+test.describe('nachgeladen und Wake Lock', () => {
+  test('ohne den nachgeladenen Teil geht das Menü trotzdem: Lösung zeigen und Level wählen', async ({ page }) => {
+    await page.route(/\/ks-menu\.[^/]*\.js$/, (route) => route.abort());
+    await openGame(page, { hash: '#lektion-2', store: { 'skip.e1': true } });
+    await page.keyboard.press('m');
+    const d = page.locator('#spiel dialog.menu');
+    await expect(d).toBeVisible();
+    await d.getByRole('button', { name: 'Lösung zeigen' }).click();
+    await expect(d).toBeHidden();
+    expect(await stored(page, 'shown.e2')).toBe('true');
+    await expect(sign(page)).toHaveText(SIGN.showing);
+    await page.keyboard.press('Escape');
+    await expect(d).toBeVisible();
+    await d.getByRole('link', { name: 'Level wählen' }).click();
+    await expect(page).toHaveURL(/#level$/);
+    await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeVisible();
+    await expect(spiel(page)).not.toHaveClass(/\bextras\b/);
+  });
+
+  test('das Konfetti (Teil ks-menu) kommt erst mit einer Lektion', async ({ page }) => {
+    const asked: string[] = [];
+    page.on('request', (r) => {
+      if (/\/ks-menu\.[^/]*\.js$/.test(r.url())) asked.push(r.url());
+    });
+    await openGame(page);
+    await page.evaluate(() => (location.hash = '#level'));
+    await expect(page.getByRole('heading', { level: 2, name: 'Level wählen' })).toBeVisible();
+    expect(asked).toEqual([]);
+    await page.evaluate(() => (location.hash = '#lektion-1'));
+    await extras(page);
+    expect(asked).toHaveLength(1);
+  });
+
+  test('Wake Lock: angefordert auf dem Spielfeld, freigegeben beim Verlassen', async ({ page }) => {
+    await fakeWakeLock(page);
+    await openGame(page);
+    expect(await wakeLog(page)).toEqual([]);
+    await page.evaluate(() => (location.hash = '#lektion-1'));
+    await expect.poll(() => wakeLog(page)).toEqual(['request screen']);
+    await page.evaluate(() => (location.hash = '#level'));
+    await expect.poll(() => wakeLog(page)).toEqual(['request screen', 'release']);
+  });
+
+  test('Wake Lock: wieder sichtbar fordert neu an', async ({ page }) => {
+    await fakeWakeLock(page);
+    await openGame(page, { hash: '#lektion-1' });
+    await expect.poll(() => wakeLog(page)).toEqual(['request screen']);
+    const setVisibility = (state: string) =>
+      page.evaluate((s) => {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => s });
+        document.dispatchEvent(new Event('visibilitychange'));
+      }, state);
+    await setVisibility('hidden');
+    await setVisibility('visible');
+    await expect.poll(() => wakeLog(page)).toEqual(['request screen', 'release', 'request screen']);
   });
 });
